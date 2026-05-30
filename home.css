@@ -447,6 +447,56 @@ body.sheet-open { overflow: hidden; }
   .ed-row .field--sm[data-field="label"], .ed-row .field--sm[data-field="name"], .ed-row .field--sm[data-field="title"] { flex: 1 0 100%; }
 }
 
+/* ----- teams editor ----- */
+.team-row { display: flex; align-items: center; gap: 10px; }
+.team-chip { font-size: 10.5px; letter-spacing: 0.1em; font-weight: 600; color: var(--red); border: 1px solid color-mix(in oklab, var(--red) 35%, var(--edge)); border-radius: 100px; padding: 2px 9px; flex: 0 0 auto; }
+.team-name { font-size: 15px; }
+.team-row .ed-del { margin-left: auto; }
+.ed-hint { font-size: 12.5px; color: var(--ink-faint); margin-top: 8px; }
+
+/* ----- pdf export sheet ----- */
+.pdf-hint { font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 18px; }
+.pdf-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 22px; }
+.pdf-row { display: flex; align-items: center; gap: 11px; padding: 11px 12px; border: 1px solid var(--edge-soft); border-radius: 12px; font-size: 15px; cursor: pointer; transition: border-color 0.2s; }
+.pdf-row:hover { border-color: var(--red); }
+.pdf-row input { width: 17px; height: 17px; accent-color: var(--red); }
+.pdf-actions { display: flex; gap: 10px; }
+
+.tools-note { font-size: 13px !important; opacity: 0.7; max-width: 46ch; margin: 18px auto 0 !important; }
+
+/* ===================== PRINT / PDF EXPORT ===================== */
+@media print {
+  /* clean, light, paged layout regardless of theme */
+  html, html.mode-dark {
+    --white: #fff; --paper: #fff; --paper-2: #f4f4f2; --ink: #15130f; --ink-soft: #46443f;
+    --ink-faint: #6f6d67; --edge: #cfcdc8; --edge-soft: #e6e4df; --red: #c0150d; --red-deep: #9c100a;
+  }
+  html, body { background: #fff !important; }
+  /* hide all interactive chrome */
+  .nav, .dotnav, .progress, .scroll-hint, .sec-edit, .theme-toggle, #toast, .sheet,
+  .cursor-ring, .cursor-dot, .h-foot, .actions, .tools-note { display: none !important; }
+  /* neutralize the scroll choreography so content lays out statically */
+  .h-hero { height: auto !important; }
+  .h-hero-pin { position: static !important; height: auto !important; overflow: visible !important; }
+  .h-hero-red, .h-hero-statement { display: none !important; }
+  .h-hero-top { position: static !important; opacity: 1 !important; transform: none !important; padding: 0 0 18px !important; }
+  .h-today-card { position: static !important; transform: none !important; opacity: 1 !important; width: auto !important; max-width: 440px; margin: 0 0 12px !important; }
+  .notes-wrap { height: auto !important; }
+  .notes-pin { position: static !important; height: auto !important; overflow: visible !important; display: block !important; }
+  .notes-head { position: static !important; }
+  .notes-track { transform: none !important; flex-wrap: wrap !important; margin-top: 12px !important; }
+  .reveal { opacity: 1 !important; transform: none !important; }
+  main { display: block !important; }
+  section[data-nav] { break-inside: avoid; page-break-inside: avoid; padding: 14px 0 !important; }
+  .sec, .notes-pin, .h-hero-pin { max-width: none !important; padding-left: 0 !important; padding-right: 0 !important; }
+  .sec { padding: 6px 0 !important; }
+  .h-close { background: #fff !important; color: #15130f !important; padding: 10px 0 0 !important; }
+  .h-close h2, .h-close p { color: #15130f !important; }
+  /* only print the chosen sections */
+  body.printing [data-nav]:not(.print-include) { display: none !important; }
+  @page { margin: 14mm; }
+}
+
 /* ===================== REDUCED MOTION ===================== */
 @media (prefers-reduced-motion: reduce) {
   .h-hero, .notes-wrap { height: auto; }

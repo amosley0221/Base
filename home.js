@@ -19,6 +19,7 @@
   ["incomes", "bills", "subscriptions", "cards"].forEach((k) => { if (!Array.isArray(state.budget[k])) state.budget[k] = []; });
   state.academics = state.academics || {};
   ["courses", "assignments"].forEach((k) => { if (!Array.isArray(state.academics[k])) state.academics[k] = []; });
+  if (!Array.isArray(state.teams)) state.teams = [];
   const tIdx = S.todayIdx();
   let selDay = tIdx;
   let sportsToday = [];
@@ -451,7 +452,7 @@ ${items}
     return { incomes: state.budget.incomes, bills: state.budget.bills, subscriptions: state.budget.subscriptions,
       cards: state.budget.cards, courses: state.academics.courses, assignments: state.academics.assignments }[grp] || null;
   }
-  function liveRender() { if (sheetKind === "budget") renderBudget(); else renderAcademics(); }
+  function liveRender() { if (sheetKind === "budget") renderBudget(); else if (sheetKind === "acad") renderAcademics(); else if (sheetKind === "teams") renderScores(); }
   function attr(v) { return v == null ? "" : String(v).replace(/"/g, "&quot;"); }
   function inp(grp, id, f, value, o) {
     o = o || {};
@@ -510,7 +511,123 @@ ${items}
     wireSheet();
   }
 
-  function buildSheet() { if (sheetKind === "budget") buildBudgetSheet(); else buildAcadSheet(); }
+  function buildSheet() {
+    if (sheetKind === "budget") buildBudgetSheet();
+    else if (sheetKind === "teams") buildTeamsSheet();
+    else if (sheetKind === "pdf") buildPdfSheet();
+    else buildAcadSheet();
+  }
+
+  // ----- teams editor (scoreboard) -----
+  function buildTeamsSheet() {
+    const teams = state.teams || [];
+    const rows = teams.length ? teams.map((t) => `<div class="ed-row team-row">
+        <span class="team-chip">${esc((t.league || "").toUpperCase())}</span>
+        <span class="team-name">${esc(t.name)}</span>
+        <button class="ed-del" type="button" data-del-team="${esc(t.id)}|${esc(t.league)}" aria-label="Remove" data-cursor>&times;</button>
+      </div>`).join("") : emptyHint("No teams yet — add some below.");
+    const leagueOpts = window.Sports.LEAGUES.map((l) => `<option value="${l.sport}|${l.league}">${l.label}</option>`).join("");
+    sheetBody.innerHTML =
+      `<div class="ed-group"><div class="ed-grp-head"><h4>Your teams</h4></div>${rows}</div>
+       <div class="ed-group"><div class="ed-grp-head"><h4>Add a team</h4></div>
+         <div class="ed-row"><select class="field field--sm" id="tmLeague">${leagueOpts}</select>
+           <select class="field field--sm" id="tmTeam" style="flex:1.6"><option value="">Loading…</option></select>
+           <button class="ed-add" type="button" id="tmAdd" data-cursor>+ Add</button></div>
+         <div class="ed-hint" id="tmHint"></div></div>`;
+    const leagueSel = $("#tmLeague"), teamSel = $("#tmTeam"), hint = $("#tmHint");
+    async function loadTeams() {
+      teamSel.innerHTML = `<option value="">Loading…</option>`; hint.textContent = "";
+      const [sport, league] = leagueSel.value.split("|");
+      const list = await window.Sports.teamList(sport, league);
+      if (!list.length) { teamSel.innerHTML = `<option value="">— couldn't load —</option>`; hint.textContent = "Connect to the internet to pick teams."; return; }
+      teamSel.innerHTML = list.map((t) => `<option value="${esc(t.id)}|${esc(t.name)}">${esc(t.name)}</option>`).join("");
+    }
+    leagueSel.addEventListener("change", loadTeams);
+    loadTeams();
+    $("#tmAdd").addEventListener("click", () => {
+      const [sport, league] = leagueSel.value.split("|");
+      const val = teamSel.value; if (!val) return;
+      const sep = val.indexOf("|"); const id = val.slice(0, sep), name = val.slice(sep + 1);
+      if ((state.teams || []).some((t) => t.id === id && t.league === league)) { toast(name + " is already added"); return; }
+      state.teams.push({ id, sport, league, name });
+      persist(); buildTeamsSheet(); renderScores(); toast("Added " + name);
+    });
+    $$("[data-del-team]", sheetBody).forEach((btn) => btn.addEventListener("click", () => {
+      const v = btn.dataset.delTeam, sep = v.indexOf("|"); const id = v.slice(0, sep), league = v.slice(sep + 1);
+      const i = state.teams.findIndex((t) => t.id === id && t.league === league);
+      if (i >= 0) state.teams.splice(i, 1);
+      persist(); buildTeamsSheet(); renderScores();
+    }));
+  }
+
+  // ----- export to PDF (whole page or selected sections) -----
+  function buildPdfSheet() {
+    const secs = $$("[data-nav][data-label]");
+    const rows = secs.map((s, i) => `<label class="pdf-row"><input type="checkbox" class="pdf-sec" value="${i}" checked /> <span>${esc(s.dataset.label)}</span></label>`).join("");
+    sheetBody.innerHTML =
+      `<p class="pdf-hint">Pick the sections to include, then save. On your phone choose “Save to Files” or share the PDF to keep it.</p>
+       <div class="pdf-list">${rows}</div>
+       <div class="pdf-actions"><button class="btn btn--red btn--sm" type="button" id="pdfGo" data-cursor>Save as PDF</button>
+         <button class="btn btn--ghost btn--sm" type="button" id="pdfAll" data-cursor>Select all</button></div>`;
+    $("#pdfAll").addEventListener("click", () => $$(".pdf-sec", sheetBody).forEach((c) => { c.checked = true; }));
+    $("#pdfGo").addEventListener("click", () => {
+      const idxs = $$(".pdf-sec", sheetBody).filter((c) => c.checked).map((c) => +c.value);
+      if (!idxs.length) { toast("Pick at least one section"); return; }
+      runPdf(idxs);
+    });
+  }
+  function runPdf(idxs) {
+    const secs = $$("[data-nav][data-label]");
+    secs.forEach((s, i) => s.classList.toggle("print-include", idxs.indexOf(i) >= 0));
+    document.body.classList.add("printing");
+    closeSheet();
+    setTimeout(() => window.print(), 180);
+  }
+  window.addEventListener("afterprint", () => {
+    document.body.classList.remove("printing");
+    $$("[data-nav]").forEach((s) => s.classList.remove("print-include"));
+  });
+
+  // ----- backup / restore (file) + durable storage -----
+  let toastT;
+  function toast(msg) {
+    const el = $("#toast"); if (!el) return;
+    el.textContent = msg; el.classList.add("show");
+    clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove("show"), 2400);
+  }
+  function downloadBlob(blob, fname) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = fname;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+  function exportData() {
+    const fname = "base-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    try {
+      const file = new File([blob], fname, { type: "application/json" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: "BASE backup" }).then(() => toast("Backup shared")).catch(() => downloadBlob(blob, fname));
+        return;
+      }
+    } catch (e) {}
+    downloadBlob(blob, fname); toast("Backup saved");
+  }
+  function importData(file) {
+    if (!file) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const obj = JSON.parse(r.result);
+        if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new Error("bad");
+        S.save(obj); toast("Restored — reloading…");
+        setTimeout(() => location.reload(), 700);
+      } catch (e) { toast("Couldn't read that backup file"); }
+    };
+    r.readAsText(file);
+  }
+  // ask the browser to keep our data through storage pressure / updates
+  if (navigator.storage && navigator.storage.persist) { navigator.storage.persist().catch(() => {}); }
 
   function wireSheet() {
     $$("[data-grp]", sheetBody).forEach((el) => {
@@ -547,9 +664,10 @@ ${items}
     persist(); buildSheet(); liveRender();
   }
 
+  const SHEET_TITLES = { budget: "Edit budget", acad: "Edit courses & assignments", teams: "Edit teams", pdf: "Export to PDF" };
   function openSheet(kind) {
     sheetKind = kind;
-    sheetTitle.textContent = kind === "budget" ? "Edit budget" : "Edit courses & assignments";
+    sheetTitle.textContent = SHEET_TITLES[kind] || "Edit";
     buildSheet();
     sheet.hidden = false;
     document.body.classList.add("sheet-open");
@@ -560,6 +678,15 @@ ${items}
     sheet.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) closeSheet(); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !sheet.hidden) closeSheet(); });
     $$("[data-edit]").forEach((btn) => btn.addEventListener("click", () => openSheet(btn.dataset.edit)));
+  }
+
+  // tools (wrap-up section): export PDF, back up, restore
+  const btnPdf = $("#btnPdf"), btnBackup = $("#btnBackup"), btnRestore = $("#btnRestore"), fileRestore = $("#fileRestore");
+  if (btnPdf) btnPdf.addEventListener("click", () => openSheet("pdf"));
+  if (btnBackup) btnBackup.addEventListener("click", exportData);
+  if (btnRestore && fileRestore) {
+    btnRestore.addEventListener("click", () => fileRestore.click());
+    fileRestore.addEventListener("change", () => { importData(fileRestore.files[0]); fileRestore.value = ""; });
   }
 
   // ---------- WEATHER ----------

@@ -184,12 +184,13 @@
   </section>
 
   <!-- ============ SCOREBOARD ============ -->
-  <section class="scores-wrap" data-nav data-theme="on-light" data-label="Scoreboard" data-href="Scoreboard.html" data-screen-label="Scores">
+  <section class="scores-wrap" data-nav data-theme="on-light" data-label="Scoreboard" data-screen-label="Scores">
     <div class="sec">
       <div class="sec-head reveal">
         <div class="eyebrow">Your teams</div>
         <h2>The scoreboard.</h2>
         <p class="lede">Live scores and what's next — so you never miss a game on a study night.</p>
+        <button class="sec-edit" type="button" data-edit="teams" data-cursor>Edit teams</button>
       </div>
       <div class="score-grid reveal d1" id="scoreGrid"></div>
     </div>
@@ -239,9 +240,12 @@
       <h2 class="reveal">That's the plan.</h2>
       <p class="reveal">You don't have to do it all at once. Pick the next thing, and let the rest stay where it is.</p>
       <div class="actions reveal">
-        <a class="btn btn--light" href="Plan.html">Adjust today's plan</a>
-        <a class="btn btn--ghost" href="Calendar.html" style="color:#fff;border-color:rgba(255,255,255,0.5)">See the week</a>
+        <button class="btn btn--light" type="button" id="btnPdf" data-cursor>Export to PDF</button>
+        <button class="btn btn--ghost" type="button" id="btnBackup" data-cursor style="color:#fff;border-color:rgba(255,255,255,0.5)">Back up to file</button>
+        <button class="btn btn--ghost" type="button" id="btnRestore" data-cursor style="color:#fff;border-color:rgba(255,255,255,0.5)">Restore</button>
+        <input type="file" id="fileRestore" accept="application/json,.json" hidden />
       </div>
+      <p class="reveal tools-note">Everything saves on this device. Back up to a file you can keep on your phone — then Restore it after reinstalling or on a new device.</p>
     </div>
     <div class="h-foot">
       <div class="fb">BASE</div>
@@ -267,6 +271,8 @@
     <div class="sheet-body" id="sheetBody"></div>
   </div>
 </div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="store.js"></script>
 <script src="sports.js"></script>
