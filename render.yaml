@@ -1,0 +1,22 @@
+# Render Blueprint — deploys BASE as a static site.
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: base-homebase
+    runtime: static
+    buildCommand: "echo No build step — static files served as-is"
+    staticPublishPath: .
+    # Serve the planner at the bare domain, but keep every other file
+    # (Home.html, assets, the PWA manifest + service worker) reachable directly.
+    routes:
+      - type: rewrite
+        source: /
+        destination: /Home.html
+    headers:
+      # The service worker must never be served stale, or updates won't ship.
+      - path: /sw.js
+        name: Cache-Control
+        value: "no-cache, no-store, must-revalidate"
+      - path: /manifest.webmanifest
+        name: Cache-Control
+        value: "no-cache"

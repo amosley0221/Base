@@ -4,7 +4,21 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BASE — Your homebase</title>
+<meta name="description" content="A calm personal homebase — today's tasks, habits, notes, your week, scores and budget, all in one scroll." />
 <script>try{if(localStorage.getItem('base_theme')==='dark')document.documentElement.classList.add('mode-dark');}catch(e){}</script>
+
+<!-- PWA: installable on phone / desktop -->
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#FBFAF8" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0E0F0B" media="(prefers-color-scheme: dark)" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="BASE" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="icon-32.png" sizes="32x32" type="image/png" />
+
 <link rel="stylesheet" href="app.css" />
 <link rel="stylesheet" href="home.css" />
 </head>
@@ -195,5 +209,13 @@
 <script src="home.js"></script>
 <script src="theme.js"></script>
 <script src="cursor.js"></script>
+<script>
+  // Register the service worker so BASE installs and works offline.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    });
+  }
+</script>
 </body>
 </html>

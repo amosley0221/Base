@@ -1,0 +1,19 @@
+{
+  "name": "BASE — Your homebase",
+  "short_name": "BASE",
+  "description": "A calm personal homebase — today's tasks, habits, notes, your week, scores and budget, all in one scroll.",
+  "start_url": "/Home.html",
+  "scope": "/",
+  "id": "/Home.html",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#FBFAF8",
+  "theme_color": "#E8281E",
+  "categories": ["productivity", "lifestyle", "utilities"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
