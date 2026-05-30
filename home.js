@@ -219,7 +219,12 @@ ${items}
   }
   async function renderScores() {
     const grid = $("#scoreGrid");
-    if (!state.teams || !state.teams.length) { grid.innerHTML = `<p class="muted">No teams yet — add some on the Plan page.</p>`; return; }
+    if (!state.teams || !state.teams.length) {
+      grid.innerHTML = `<p class="muted">No teams yet — add some with “Edit teams”.</p>`;
+      const gc = $("#gameCenter"); if (gc) gc.innerHTML = "";
+      renderNews();
+      return;
+    }
     grid.innerHTML = state.teams.map((t) => `<div class="score-card" data-key="${t.league}-${t.id}"><div class="sc-head"><div class="sc-team">${esc(t.name)}</div></div><div class="sc-line muted">Loading…</div></div>`).join("");
     const results = await Promise.all(state.teams.map((t) => window.Sports.teamGame(t)));
     sportsToday = [];
@@ -229,6 +234,164 @@ ${items}
       if (res.todayGame) sportsToday.push({ team: res.team.name, time: res.todayGame.date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }), live: res.todayGame.state === "in" });
     });
     renderPreview();
+
+    // pick the most relevant game to feature: live > today > nearest upcoming > last
+    const withGame = results.filter((r) => r.chosen);
+    const prio = (r) => {
+      const g = r.chosen;
+      if (g.state === "in") return [0, 0];
+      if (r.todayGame) return [1, 0];
+      if (g.state === "pre") return [2, g.date ? g.date.getTime() : Infinity];
+      return [3, g.date ? -g.date.getTime() : 0];
+    };
+    withGame.sort((a, b) => { const pa = prio(a), pb = prio(b); return pa[0] - pb[0] || pa[1] - pb[1]; });
+    renderGameCenter(withGame[0]);
+    renderNews();
+  }
+
+  // ---------- GAME CENTER (featured matchup, box score, head-to-head) ----------
+  function teamMark(abbr, color) {
+    return `<span class="gc-mark" style="background:${color || "var(--ink)"}">${esc(abbr || "—")}</span>`;
+  }
+  function gcHero(side, g, sum) {
+    // prefer detailed summary sides; fall back to the schedule "chosen" game
+    const away = (sum && sum.away) || null;
+    const home = (sum && sum.home) || null;
+    const aAbbr = away ? away.abbr : (g.home ? (g.oppAbbr || g.opp) : (side.name));
+    const status = (sum && sum.detail) || g.detail || (g.state === "pre" ? fmtGameTime(g.date) : "");
+    const live = g.state === "in";
+    let aName, hName, aScore, hScore, aColor, hColor, aRec, hRec;
+    if (away && home) {
+      aName = away.name; hName = home.name; aScore = away.score; hScore = home.score;
+      aColor = away.color; hColor = home.color; aRec = away.record; hRec = home.record;
+    } else {
+      // derive from "chosen": our team + opponent, ordered away/home
+      const our = { name: side.name, score: g.ourScore, abbr: side.name };
+      const opp = { name: g.opp, score: g.oppScore, abbr: g.oppAbbr || g.opp };
+      const a = g.home ? opp : our, h = g.home ? our : opp;
+      aName = a.name; hName = h.name; aScore = a.score; hScore = h.score;
+    }
+    const sc = (v) => (v == null || v === "") ? "—" : v;
+    return `<div class="gc-kicker reveal">${esc((side.league || "").toUpperCase())} · Featured${live ? ` <span class="gc-status"><span class="gc-live-dot"></span>LIVE</span>` : ""}</div>
+      <div class="gc-matchup reveal">
+        <div class="gc-team away">${teamMark((away && away.abbr) || "", aColor)}<div class="gc-name">${esc(aName)}</div>${aRec ? `<div class="gc-rec">${esc(aRec)}</div>` : ""}</div>
+        <div class="gc-score-block">
+          <div class="gc-scores"><span class="away-s" data-count="${typeof aScore === "number" || /^\d+$/.test(aScore) ? +aScore : ""}">${sc(aScore)}</span><span class="dash">–</span><span class="home-s" data-count="${typeof hScore === "number" || /^\d+$/.test(hScore) ? +hScore : ""}">${sc(hScore)}</span></div>
+          <div class="gc-clock">${esc(status)}</div>
+        </div>
+        <div class="gc-team home">${teamMark((home && home.abbr) || "", hColor)}<div class="gc-name">${esc(hName)}</div>${hRec ? `<div class="gc-rec">${esc(hRec)}</div>` : ""}</div>
+      </div>`;
+  }
+  function gcPeriods(sum) {
+    if (!sum || !sum.periods || !sum.periods.length) return "";
+    const head = sum.periods.map((p) => `<th>${esc(p)}</th>`).join("");
+    const rowFor = (s) => `<tr><td>${esc(s.abbr || s.name)}</td>${sum.periods.map((_, i) => `<td>${esc(s.linescores[i] != null ? s.linescores[i] : "·")}</td>`).join("")}<td class="total">${esc(s.score != null ? s.score : "")}</td></tr>`;
+    return `<div class="gc-periods reveal"><table><thead><tr><th class="lead">TEAM</th>${head}<th>T</th></tr></thead>
+      <tbody>${rowFor(sum.away)}${rowFor(sum.home)}</tbody></table></div>`;
+  }
+  function gcCompare(sum) {
+    if (!sum || !sum.teamStats || !sum.teamStats.length) return "";
+    const rows = sum.teamStats.map((s) => {
+      const an = parseFloat(String(s.away).replace(/[^0-9.\-]/g, ""));
+      const hn = parseFloat(String(s.home).replace(/[^0-9.\-]/g, ""));
+      let bars = "";
+      if (isFinite(an) && isFinite(hn) && (an + hn) > 0) {
+        const aw = Math.round((an / (an + hn)) * 100), hw = 100 - aw;
+        bars = `<div class="cmp-bar"><i class="cmp-bar-fill away" style="--w:${aw}%"></i><i class="cmp-bar-fill home" style="--w:${hw}%"></i></div>`;
+      } else {
+        bars = `<div class="cmp-bar"></div>`;
+      }
+      return `<div class="cmp-row reveal"><div class="cmp-label">${esc(s.label)}</div>
+        <div class="cmp-val away">${esc(s.away)}</div>${bars}<div class="cmp-val home">${esc(s.home)}</div></div>`;
+    }).join("");
+    return `<div class="gc-sub reveal"><span class="eyebrow">Head to head</span></div><div class="compare">${rows}</div>`;
+  }
+  function gcArc(sum) {
+    // momentum: running (home − away) score differential across periods
+    if (!sum || !sum.periods || sum.periods.length < 2) return "";
+    const a = sum.away.linescores || [], h = sum.home.linescores || [];
+    let cum = 0; const diffs = [];
+    for (let i = 0; i < sum.periods.length; i++) {
+      const av = parseFloat(a[i]) || 0, hv = parseFloat(h[i]) || 0;
+      cum += hv - av; diffs.push(cum);
+    }
+    const W = 600, H = 150, mid = H / 2;
+    const maxAbs = Math.max(5, ...diffs.map((d) => Math.abs(d)));
+    const x = (i) => (i / (diffs.length - 1)) * W;
+    const y = (d) => mid - (d / maxAbs) * (mid - 12);
+    const line = diffs.map((d, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(d).toFixed(1)).join(" ");
+    const area = `M0 ${mid} ` + diffs.map((d, i) => `L${x(i).toFixed(1)} ${y(d).toFixed(1)}`).join(" ") + ` L${W} ${mid} Z`;
+    const leader = cum > 0 ? sum.home.abbr : cum < 0 ? sum.away.abbr : "Even";
+    const ticks = sum.periods.map((p, i) => `<span style="left:${(x(i) / W * 100).toFixed(1)}%">${esc(p)}</span>`).join("");
+    return `<div class="gc-sub reveal"><span class="eyebrow">Momentum</span><span class="gc-sub-note">${esc(leader)}${cum ? " ahead by " + Math.abs(cum) : ""}</span></div>
+      <div class="gc-arc reveal">
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="Score differential by period">
+          <line class="gc-arc-mid" x1="0" y1="${mid}" x2="${W}" y2="${mid}"></line>
+          <path class="gc-arc-area" d="${area}"></path>
+          <path class="gc-arc-line" pathLength="1" d="${line}"></path>
+        </svg>
+        <div class="gc-arc-x">${ticks}</div></div>`;
+  }
+  function gcLeaders(sum) {
+    if (!sum || !sum.leaders || !sum.leaders.length) return "";
+    const items = sum.leaders.map((l) => `<div class="gc-leader reveal"><span class="gl-cat">${esc(l.cat)}</span>
+      <span class="gl-who">${esc(l.who || "—")}</span><span class="gl-team">${esc(l.team || "")}</span><span class="gl-val">${esc(l.val || "")}</span></div>`).join("");
+    return `<div class="gc-sub reveal"><span class="eyebrow">Game leaders</span></div><div class="gc-leaders">${items}</div>`;
+  }
+
+  async function renderGameCenter(res) {
+    const host = $("#gameCenter"); if (!host) return;
+    if (!res || !res.chosen) { host.innerHTML = ""; return; }
+    const g = res.chosen, side = res.team;
+    host.innerHTML = gcHero(side, g, null) + `<div class="gc-loading reveal">Pulling the box score…</div>`;
+    observeReveals();
+    const sum = (g.id) ? await window.Sports.gameSummary(side.sport, side.league, g.id) : null;
+    let body;
+    if (sum) body = gcPeriods(sum) + gcCompare(sum) + gcArc(sum) + gcLeaders(sum);
+    else body = `<div class="gc-loading">${g.state === "pre" ? "Box score and momentum appear once the game tips off." : "Live game detail needs a connection."}</div>`;
+    host.innerHTML = gcHero(side, g, sum) + body;
+    observeReveals();
+  }
+
+  // ---------- NEWS / BREAKING ----------
+  function uniqueLeagues() {
+    const seen = {}, out = [];
+    (state.teams || []).forEach((t) => { const k = t.sport + "|" + t.league; if (!seen[k]) { seen[k] = 1; out.push({ sport: t.sport, league: t.league }); } });
+    return out;
+  }
+  function timeAgo(iso) {
+    const t = new Date(iso); if (isNaN(t)) return "";
+    const m = Math.round((Date.now() - t) / 60000);
+    if (m < 1) return "now"; if (m < 60) return m + "m";
+    const h = Math.round(m / 60); if (h < 24) return h + "h";
+    return Math.round(h / 24) + "d";
+  }
+  function renderPost(a) {
+    const ago = timeAgo(a.published);
+    const breaking = a.published && (Date.now() - new Date(a.published)) < 3 * 3600 * 1000;
+    const who = (a.byline || (a.league || "").toUpperCase() || "Newsroom").trim();
+    const initial = (who[0] || "•").toUpperCase();
+    const inner = `<div class="post-head"><span class="avatar">${esc(initial)}</span>
+        <div><div class="post-name">${esc(who)}</div><div class="post-handle">${esc((a.league || "").toUpperCase())}</div></div>
+        <span class="post-time">${breaking ? `<span class="brk">BREAKING</span> ` : ""}${ago}${a.link ? ` <span class="post-arr">↗</span>` : ""}</span></div>
+      <div class="post-body"><strong>${esc(a.headline)}</strong>${a.description ? ` ${esc(a.description)}` : ""}</div>`;
+    return a.link
+      ? `<a class="post reveal" href="${esc(a.link)}" target="_blank" rel="noopener" data-cursor>${inner}</a>`
+      : `<article class="post reveal">${inner}</article>`;
+  }
+  async function renderNews() {
+    const feed = $("#newsFeed"), head = $("#newsHead"); if (!feed) return;
+    const leagues = uniqueLeagues();
+    if (!leagues.length) { feed.innerHTML = ""; if (head) head.hidden = true; return; }
+    feed.innerHTML = `<div class="news-loading">Loading the latest…</div>`;
+    const lists = await Promise.all(leagues.map((l) => window.Sports.news(l.sport, l.league, 10)));
+    let items = [];
+    lists.forEach((L) => { if (L) items = items.concat(L); });
+    if (!items.length) { feed.innerHTML = `<div class="dd-empty">Headlines need a connection — they'll load when you're online.</div>`; if (head) head.hidden = false; return; }
+    items.sort((a, b) => new Date(b.published) - new Date(a.published));
+    if (head) head.hidden = false;
+    feed.innerHTML = items.slice(0, 8).map(renderPost).join("");
+    observeReveals();
   }
 
   // ---------- BUDGET ----------
@@ -798,14 +961,39 @@ ${items}
   function frame() { updateHero(); updateNotes(); updateNav(); updateDots(); ticking = false; }
   function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(frame); } }
 
-  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) e.target.classList.add("in"); }), { threshold: 0.18 });
-  $$(".reveal").forEach((el) => io.observe(el));
+  // reveal-on-scroll: observe any not-yet-shown .reveal (incl. dynamically added)
+  function observeReveals() {
+    $$(".reveal").forEach((el) => {
+      if (el.dataset.shown) return;
+      el.dataset.shown = "1";
+      if (reduce) { el.classList.add("in"); animateCounts(el); }
+      else io.observe(el);
+    });
+  }
+  // count-up numbers when revealed — GSAP if present, otherwise just set them
+  function animateCounts(root) {
+    if (!root || !root.querySelectorAll) return;
+    root.querySelectorAll("[data-count]").forEach((el) => {
+      if (el.dataset.counted) return;
+      const target = parseFloat(el.dataset.count);
+      if (!isFinite(target)) return;
+      el.dataset.counted = "1";
+      if (reduce || !window.gsap) { el.textContent = String(Math.round(target)); return; }
+      const o = { v: 0 };
+      window.gsap.to(o, { v: target, duration: 1.3, ease: "power2.out", onUpdate: () => { el.textContent = String(Math.round(o.v)); } });
+    });
+  }
+
+  const io = new IntersectionObserver((es) => es.forEach((e) => {
+    if (e.isIntersecting) { e.target.classList.add("in"); animateCounts(e.target); io.unobserve(e.target); }
+  }), { threshold: 0.18 });
 
   if (!reduce) {
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll, { passive: true });
     frame();
-  } else { $$(".reveal").forEach((el) => el.classList.add("in")); updateDots(); }
+  } else { updateDots(); }
+  observeReveals();
 
   $$('a[href^="#"]').forEach((a) => a.addEventListener("click", (e) => {
     const id = a.getAttribute("href"); if (id.length < 2) return;

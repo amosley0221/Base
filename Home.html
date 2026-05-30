@@ -21,6 +21,10 @@
 
 <link rel="stylesheet" href="app.css" />
 <link rel="stylesheet" href="home.css" />
+
+<!-- Count-up animation polish (progressive enhancement; the section fully
+     works without it via CSS + IntersectionObserver fallbacks). -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 </head>
 <body>
 
@@ -193,6 +197,16 @@
         <button class="sec-edit" type="button" data-edit="teams" data-cursor>Edit teams</button>
       </div>
       <div class="score-grid reveal d1" id="scoreGrid"></div>
+
+      <!-- featured game center (matchup, box score, head-to-head, momentum) -->
+      <div class="gc" id="gameCenter"></div>
+
+      <!-- breaking news & insider posts -->
+      <div class="news-head reveal" id="newsHead" hidden>
+        <div class="eyebrow">Around the league</div>
+        <h3>Breaking &amp; latest</h3>
+      </div>
+      <div class="news-feed" id="newsFeed"></div>
     </div>
   </section>
 

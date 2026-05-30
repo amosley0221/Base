@@ -237,5 +237,23 @@ window.Sports = (function () {
     } catch (e) { return null; }
   }
 
-  return { LEAGUES, teamGame, teamList, leagueScoreboard, standings, gameSummary };
+  // League news / insider headlines (Schefter, Woj, breaking, etc.)
+  async function news(sport, league, limit) {
+    try {
+      const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/news${limit ? "?limit=" + limit : ""}`;
+      const d = await (await fetch(url)).json();
+      return (d.articles || []).map((a) => ({
+        headline: a.headline || a.title || "",
+        description: a.description || "",
+        published: a.published || a.lastModified || "",
+        byline: a.byline || (a.source || ""),
+        type: a.type || "",
+        premium: a.premium === true,
+        link: (a.links && a.links.web && a.links.web.href) || "",
+        league,
+      })).filter((x) => x.headline);
+    } catch (e) { return null; }
+  }
+
+  return { LEAGUES, teamGame, teamList, leagueScoreboard, standings, gameSummary, news };
 })();
