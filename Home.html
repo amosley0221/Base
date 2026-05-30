@@ -143,6 +143,46 @@
     </div>
   </section>
 
+  <!-- ============ ACADEMICS / GPA ============ -->
+  <section class="acad-wrap" data-nav data-theme="on-light" data-label="Academics" data-screen-label="GPA">
+    <div class="sec">
+      <div class="sec-head reveal">
+        <div class="eyebrow">School</div>
+        <h2>Where you stand.</h2>
+        <p class="lede">Your GPA, where it's headed with this term's grades, and the credits between you and the degree.</p>
+        <button class="sec-edit" type="button" data-edit="acad" data-cursor>Edit courses</button>
+      </div>
+
+      <div class="acad-top reveal d1">
+        <div class="gpa-card">
+          <div class="gpa-block"><div class="n" id="gpaNow">0.00</div><div class="k">current GPA</div></div>
+          <div class="gpa-arrow" aria-hidden="true">→</div>
+          <div class="gpa-block"><div class="n" id="gpaProj">0.00</div><div class="k">projected</div></div>
+        </div>
+        <div class="cred-card">
+          <div class="ring ring--sm">
+            <svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="54"></circle><circle class="fill" id="credFill" cx="60" cy="60" r="54"></circle></svg>
+            <div class="center"><div><div class="n" id="credPct">0%</div><div class="k">to degree</div></div></div>
+          </div>
+          <div class="cred-meta" id="credMeta"></div>
+        </div>
+      </div>
+
+      <div class="acad-tiles reveal d2" id="acadTiles"></div>
+
+      <div class="acad-cols reveal d3">
+        <div class="acad-assign">
+          <h3 class="fin-sub">Upcoming assignments</h3>
+          <div id="acadAssign"></div>
+        </div>
+        <div class="acad-terms">
+          <h3 class="fin-sub">By semester</h3>
+          <div id="acadTerms"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ SCOREBOARD ============ -->
   <section class="scores-wrap" data-nav data-theme="on-light" data-label="Scoreboard" data-href="Scoreboard.html" data-screen-label="Scores">
     <div class="sec">
@@ -156,27 +196,39 @@
   </section>
 
   <!-- ============ BUDGET ============ -->
-  <section class="budget-wrap" data-nav data-theme="on-light" data-label="Budget" data-href="Budget.html" data-screen-label="Budget">
+  <section class="budget-wrap" data-nav data-theme="on-light" data-label="Budget" data-screen-label="Budget">
     <div class="sec">
       <div class="sec-head reveal">
         <div class="eyebrow">Money</div>
-        <h2>What's left this month.</h2>
-        <p class="lede">Two jobs in, the essentials out — and what stays for Vegas and everything else.</p>
+        <h2>Your money, in one place.</h2>
+        <p class="lede">Cash on hand, income before and after taxes, and every bill, sub and card — with what's due next.</p>
+        <button class="sec-edit" type="button" data-edit="budget" data-cursor>Edit budget</button>
       </div>
-      <div class="budget-dash reveal d1">
+
+      <div class="fin-tiles reveal d1" id="finTiles"></div>
+
+      <div class="budget-dash reveal d2">
         <div class="bd-left">
           <div class="bd-leftover">
             <div class="bd-amount" id="bdLeft">$0</div>
-            <div class="bd-cap">left to spend / save</div>
+            <div class="bd-cap">left each month after taxes &amp; bills</div>
           </div>
           <div class="bd-spark" id="bdSpark"></div>
           <div class="bd-bar" id="bdBar"></div>
           <div class="bd-io">
-            <div><span class="bd-k">In</span><span class="bd-v" id="bdIn">$0</span></div>
-            <div><span class="bd-k">Out</span><span class="bd-v" id="bdOut">$0</span></div>
+            <div><span class="bd-k">Take-home / mo</span><span class="bd-v" id="bdIn">$0</span></div>
+            <div><span class="bd-k">Out / mo</span><span class="bd-v" id="bdOut">$0</span></div>
           </div>
         </div>
-        <div class="bd-right" id="bdCats"></div>
+        <div class="bd-right">
+          <div class="bd-due-head"><h3 class="fin-sub">Upcoming bills</h3><span class="bd-due-total" id="bdDueTotal"></span></div>
+          <div id="bdDue"></div>
+        </div>
+      </div>
+
+      <div class="fin-cards reveal d3">
+        <h3 class="fin-sub">Cards &amp; accounts</h3>
+        <div class="card-grid" id="bdCards"></div>
       </div>
     </div>
   </section>
@@ -203,6 +255,18 @@
   </section>
 
 </main>
+
+<!-- editor sheet (budget / courses) -->
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-scrim" data-close></div>
+  <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-head">
+      <h3 id="sheetTitle">Edit</h3>
+      <button class="sheet-x" type="button" data-close aria-label="Close" data-cursor>&times;</button>
+    </div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </div>
+</div>
 
 <script src="store.js"></script>
 <script src="sports.js"></script>
