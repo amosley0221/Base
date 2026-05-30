@@ -221,7 +221,8 @@ ${items}
     const grid = $("#scoreGrid");
     if (!state.teams || !state.teams.length) {
       grid.innerHTML = `<p class="muted">No teams yet — add some with “Edit teams”.</p>`;
-      const gc = $("#gameCenter"); if (gc) gc.innerHTML = "";
+      const hero = $("#gameHero"); if (hero) hero.innerHTML = "";
+      const detail = $("#gameDetail"); if (detail) detail.innerHTML = "";
       renderNews();
       return;
     }
@@ -340,16 +341,20 @@ ${items}
   }
 
   async function renderGameCenter(res) {
-    const host = $("#gameCenter"); if (!host) return;
-    if (!res || !res.chosen) { host.innerHTML = ""; return; }
+    const hero = $("#gameHero"), detail = $("#gameDetail");
+    if (!hero) return;
+    if (!res || !res.chosen) { hero.innerHTML = ""; if (detail) detail.innerHTML = ""; return; }
     const g = res.chosen, side = res.team;
-    host.innerHTML = gcHero(side, g, null) + `<div class="gc-loading reveal">Pulling the box score…</div>`;
+    hero.innerHTML = gcHero(side, g, null);                 // summary: matchup (always visible)
+    if (detail) detail.innerHTML = `<div class="gc-loading reveal">Pulling the box score…</div>`;
     observeReveals();
     const sum = (g.id) ? await window.Sports.gameSummary(side.sport, side.league, g.id) : null;
-    let body;
-    if (sum) body = gcPeriods(sum) + gcCompare(sum) + gcArc(sum) + gcLeaders(sum);
-    else body = `<div class="gc-loading">${g.state === "pre" ? "Box score and momentum appear once the game tips off." : "Live game detail needs a connection."}</div>`;
-    host.innerHTML = gcHero(side, g, sum) + body;
+    hero.innerHTML = gcHero(side, g, sum);
+    if (detail) {
+      detail.innerHTML = sum
+        ? (gcPeriods(sum) + gcCompare(sum) + gcArc(sum) + gcLeaders(sum))
+        : `<div class="gc-loading">${g.state === "pre" ? "Box score and momentum appear once the game tips off." : "Live game detail needs a connection."}</div>`;
+    }
     observeReveals();
   }
 
@@ -487,6 +492,20 @@ ${items}
           <div class="ac-sub">available cash</div></div>`;
       }).join("") : `<div class="dd-empty">No cards yet — add one with “Edit budget”.</div>`;
     }
+
+    // condensed summary (always visible on scroll)
+    const sumEl = $("#budgetSummary");
+    if (sumEl) {
+      const next = due[0];
+      const within = due.filter((x) => S.daysUntilDate(x.date) <= 30).reduce((s, x) => s + x.amount, 0);
+      sumEl.innerHTML =
+        `<div class="sum-chip"><div class="sc-k">Cash on hand</div><div class="sc-v">${money(t.cash)}</div></div>
+         <div class="sum-chip"><div class="sc-k">Left this month</div><div class="sc-v ${t.leftMo < 0 ? "neg" : ""}">${(t.leftMo < 0 ? "–" : "") + money(Math.abs(t.leftMo))}</div></div>
+         ${next
+            ? `<div class="sum-chip alert"><div class="sc-k">Next bill</div><div class="sc-v">${esc(next.name)} · ${money(next.amount)}</div><div class="sc-s">${shortDate(next.date)} · ${relDay(S.daysUntilDate(next.date))}</div></div>`
+            : `<div class="sum-chip"><div class="sc-k">Bills</div><div class="sc-v">All clear</div></div>`}
+         <div class="sum-chip"><div class="sc-k">Due in 30 days</div><div class="sc-v">${money(within)}</div></div>`;
+    }
   }
 
   function renderSpark(b, left) {
@@ -567,6 +586,21 @@ ${items}
     ];
     const at = $("#acadTiles");
     if (at) at.innerHTML = tiles.map((x) => `<div class="fin-tile"><div class="ft-k">${esc(x.k)}</div><div class="ft-v">${x.v}</div><div class="ft-s">${esc(x.s)}</div></div>`).join("");
+
+    // condensed summary (always visible on scroll)
+    const sumEl = $("#acadSummary");
+    if (sumEl) {
+      const aList = (a.assignments || []).map((x) => ({ ...x, days: x.due ? S.daysUntil(x.due) : null }))
+        .filter((x) => !x.done).sort((p, q) => (p.days == null ? 1e9 : p.days) - (q.days == null ? 1e9 : q.days));
+      const nx = aList[0];
+      const whenA = nx ? (nx.days == null ? "" : nx.days <= 0 ? "due today" : nx.days === 1 ? "due tomorrow" : "in " + nx.days + " days") : "";
+      sumEl.innerHTML =
+        `<div class="sum-chip"><div class="sc-k">GPA</div><div class="sc-v ${gpaClass(g.current)}">${g.current.toFixed(2)} <span class="sc-arrow">→ ${g.projected.toFixed(2)}</span></div></div>
+         <div class="sum-chip"><div class="sc-k">Credits to go</div><div class="sc-v">${needed}</div></div>
+         ${nx
+            ? `<div class="sum-chip alert"><div class="sc-k">Next due</div><div class="sc-v">${esc(nx.title || "Assignment")}</div><div class="sc-s">${whenA}${nx.course ? " · " + esc(nx.course) : ""}</div></div>`
+            : `<div class="sum-chip"><div class="sc-k">Assignments</div><div class="sc-v">All clear</div></div>`}`;
+    }
 
     renderAssignments();
 
@@ -842,6 +876,18 @@ ${items}
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !sheet.hidden) closeSheet(); });
     $$("[data-edit]").forEach((btn) => btn.addEventListener("click", () => openSheet(btn.dataset.edit)));
   }
+
+  // expand/collapse the full dashboards (calm scroll, detail on demand)
+  $$("[data-toggle]").forEach((btn) => btn.addEventListener("click", () => {
+    const el = document.getElementById(btn.dataset.toggle); if (!el) return;
+    const open = el.hidden;
+    el.hidden = !open;
+    btn.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+    const lbl = btn.querySelector(".tg-label");
+    if (lbl) lbl.textContent = open ? "Show less" : (btn.dataset.label || "View full");
+    if (open) { observeReveals(); onScroll(); }
+  }));
 
   // tools (wrap-up section): export PDF, back up, restore
   const btnPdf = $("#btnPdf"), btnBackup = $("#btnBackup"), btnRestore = $("#btnRestore"), fileRestore = $("#fileRestore");

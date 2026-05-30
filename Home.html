@@ -157,31 +157,36 @@
         <button class="sec-edit" type="button" data-edit="acad" data-cursor>Edit courses</button>
       </div>
 
-      <div class="acad-top reveal d1">
-        <div class="gpa-card">
-          <div class="gpa-block"><div class="n" id="gpaNow">0.00</div><div class="k">current GPA</div></div>
-          <div class="gpa-arrow" aria-hidden="true">→</div>
-          <div class="gpa-block"><div class="n" id="gpaProj">0.00</div><div class="k">projected</div></div>
-        </div>
-        <div class="cred-card">
-          <div class="ring ring--sm">
-            <svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="54"></circle><circle class="fill" id="credFill" cx="60" cy="60" r="54"></circle></svg>
-            <div class="center"><div><div class="n" id="credPct">0%</div><div class="k">to degree</div></div></div>
+      <div class="sec-summary reveal d1" id="acadSummary"></div>
+      <button class="sec-toggle reveal" type="button" data-toggle="acadDetail" aria-expanded="false" data-label="View full academics" data-cursor><span class="tg-label">View full academics</span><span class="tg-ic" aria-hidden="true">↓</span></button>
+
+      <div class="sec-detail" id="acadDetail" hidden>
+        <div class="acad-top reveal d1">
+          <div class="gpa-card">
+            <div class="gpa-block"><div class="n" id="gpaNow">0.00</div><div class="k">current GPA</div></div>
+            <div class="gpa-arrow" aria-hidden="true">→</div>
+            <div class="gpa-block"><div class="n" id="gpaProj">0.00</div><div class="k">projected</div></div>
           </div>
-          <div class="cred-meta" id="credMeta"></div>
+          <div class="cred-card">
+            <div class="ring ring--sm">
+              <svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="54"></circle><circle class="fill" id="credFill" cx="60" cy="60" r="54"></circle></svg>
+              <div class="center"><div><div class="n" id="credPct">0%</div><div class="k">to degree</div></div></div>
+            </div>
+            <div class="cred-meta" id="credMeta"></div>
+          </div>
         </div>
-      </div>
 
-      <div class="acad-tiles reveal d2" id="acadTiles"></div>
+        <div class="acad-tiles reveal d2" id="acadTiles"></div>
 
-      <div class="acad-cols reveal d3">
-        <div class="acad-assign">
-          <h3 class="fin-sub">Upcoming assignments</h3>
-          <div id="acadAssign"></div>
-        </div>
-        <div class="acad-terms">
-          <h3 class="fin-sub">By semester</h3>
-          <div id="acadTerms"></div>
+        <div class="acad-cols reveal d3">
+          <div class="acad-assign">
+            <h3 class="fin-sub">Upcoming assignments</h3>
+            <div id="acadAssign"></div>
+          </div>
+          <div class="acad-terms">
+            <h3 class="fin-sub">By semester</h3>
+            <div id="acadTerms"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -198,15 +203,22 @@
       </div>
       <div class="score-grid reveal d1" id="scoreGrid"></div>
 
-      <!-- featured game center (matchup, box score, head-to-head, momentum) -->
-      <div class="gc" id="gameCenter"></div>
+      <!-- featured matchup (summary; always visible) -->
+      <div class="gc" id="gameHero"></div>
 
-      <!-- breaking news & insider posts -->
-      <div class="news-head reveal" id="newsHead" hidden>
-        <div class="eyebrow">Around the league</div>
-        <h3>Breaking &amp; latest</h3>
+      <button class="sec-toggle reveal" type="button" data-toggle="scoreDetail" aria-expanded="false" data-label="Full game center &amp; news" data-cursor><span class="tg-label">Full game center &amp; news</span><span class="tg-ic" aria-hidden="true">↓</span></button>
+
+      <div class="sec-detail" id="scoreDetail" hidden>
+        <!-- box score, head-to-head, momentum, leaders -->
+        <div class="gc" id="gameDetail"></div>
+
+        <!-- breaking news & insider posts -->
+        <div class="news-head reveal" id="newsHead" hidden>
+          <div class="eyebrow">Around the league</div>
+          <h3>Breaking &amp; latest</h3>
+        </div>
+        <div class="news-feed" id="newsFeed"></div>
       </div>
-      <div class="news-feed" id="newsFeed"></div>
     </div>
   </section>
 
@@ -220,30 +232,35 @@
         <button class="sec-edit" type="button" data-edit="budget" data-cursor>Edit budget</button>
       </div>
 
-      <div class="fin-tiles reveal d1" id="finTiles"></div>
+      <div class="sec-summary reveal d1" id="budgetSummary"></div>
+      <button class="sec-toggle reveal" type="button" data-toggle="budgetDetail" aria-expanded="false" data-label="View full budget" data-cursor><span class="tg-label">View full budget</span><span class="tg-ic" aria-hidden="true">↓</span></button>
 
-      <div class="budget-dash reveal d2">
-        <div class="bd-left">
-          <div class="bd-leftover">
-            <div class="bd-amount" id="bdLeft">$0</div>
-            <div class="bd-cap">left each month after taxes &amp; bills</div>
+      <div class="sec-detail" id="budgetDetail" hidden>
+        <div class="fin-tiles reveal d1" id="finTiles"></div>
+
+        <div class="budget-dash reveal d2">
+          <div class="bd-left">
+            <div class="bd-leftover">
+              <div class="bd-amount" id="bdLeft">$0</div>
+              <div class="bd-cap">left each month after taxes &amp; bills</div>
+            </div>
+            <div class="bd-spark" id="bdSpark"></div>
+            <div class="bd-bar" id="bdBar"></div>
+            <div class="bd-io">
+              <div><span class="bd-k">Take-home / mo</span><span class="bd-v" id="bdIn">$0</span></div>
+              <div><span class="bd-k">Out / mo</span><span class="bd-v" id="bdOut">$0</span></div>
+            </div>
           </div>
-          <div class="bd-spark" id="bdSpark"></div>
-          <div class="bd-bar" id="bdBar"></div>
-          <div class="bd-io">
-            <div><span class="bd-k">Take-home / mo</span><span class="bd-v" id="bdIn">$0</span></div>
-            <div><span class="bd-k">Out / mo</span><span class="bd-v" id="bdOut">$0</span></div>
+          <div class="bd-right">
+            <div class="bd-due-head"><h3 class="fin-sub">Upcoming bills</h3><span class="bd-due-total" id="bdDueTotal"></span></div>
+            <div id="bdDue"></div>
           </div>
         </div>
-        <div class="bd-right">
-          <div class="bd-due-head"><h3 class="fin-sub">Upcoming bills</h3><span class="bd-due-total" id="bdDueTotal"></span></div>
-          <div id="bdDue"></div>
-        </div>
-      </div>
 
-      <div class="fin-cards reveal d3">
-        <h3 class="fin-sub">Cards &amp; accounts</h3>
-        <div class="card-grid" id="bdCards"></div>
+        <div class="fin-cards reveal d3">
+          <h3 class="fin-sub">Cards &amp; accounts</h3>
+          <div class="card-grid" id="bdCards"></div>
+        </div>
       </div>
     </div>
   </section>

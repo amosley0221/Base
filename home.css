@@ -464,8 +464,34 @@ body.sheet-open { overflow: hidden; }
 
 .tools-note { font-size: 13px !important; opacity: 0.7; max-width: 46ch; margin: 18px auto 0 !important; }
 
+/* ===================== SECTION SUMMARY + EXPAND ===================== */
+.sec-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+.sum-chip { background: var(--white); border: 1px solid var(--edge-soft); border-radius: 16px; padding: 18px 20px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 5px; }
+.sum-chip.alert { border-color: color-mix(in oklab, var(--red) 38%, var(--edge)); }
+.sum-chip .sc-k { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.sum-chip .sc-v { font-size: clamp(1.35rem, 2.6vw, 1.85rem); font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1.05; }
+.sum-chip .sc-v.neg, .sum-chip .sc-v.low { color: var(--red); }
+.sum-chip .sc-v.good { color: var(--move); }
+.sum-chip .sc-v.ok { color: var(--personal); }
+.sum-chip .sc-arrow { font-size: 0.92rem; font-weight: 400; color: var(--ink-faint); letter-spacing: 0; }
+.sum-chip .sc-s { font-size: 12.5px; color: var(--ink-faint); }
+.sum-chip.alert .sc-s { color: var(--red); }
+
+.sec-toggle {
+  margin-top: 22px; display: inline-flex; align-items: center; gap: 9px;
+  font-size: 13px; letter-spacing: 0.04em; color: var(--ink-soft);
+  background: none; border: none; cursor: pointer; padding: 6px 0;
+  border-bottom: 1px solid var(--edge); transition: color 0.25s var(--ease), border-color 0.25s var(--ease);
+}
+.sec-toggle:hover { color: var(--red); border-color: var(--red); }
+.sec-toggle .tg-ic { transition: transform 0.3s var(--ease); display: inline-block; font-size: 11px; }
+.sec-toggle.open .tg-ic { transform: rotate(180deg); }
+.sec-detail { margin-top: 30px; }
+.sec-detail[hidden] { display: none; }
+
 /* ===================== GAME CENTER (featured matchup) ===================== */
 .gc { margin-top: 44px; }
+#gameHero.gc { margin-top: 34px; }
 .gc-kicker { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--red); margin-bottom: 22px; }
 .gc-kicker::before { content: ""; width: 28px; height: 1px; background: var(--red); }
 .gc-status { display: inline-flex; align-items: center; gap: 6px; }
@@ -561,6 +587,9 @@ a.post:hover .post-body strong { color: var(--red); }
 
 /* ===================== PRINT / PDF EXPORT ===================== */
 @media print {
+  /* full dashboards print even when collapsed on screen */
+  .sec-detail[hidden] { display: block !important; }
+  .sec-toggle { display: none !important; }
   /* force animated stats to their final state when exporting */
   .cmp-bar-fill { width: var(--w) !important; }
   .gc-arc-line { stroke-dashoffset: 0 !important; }
