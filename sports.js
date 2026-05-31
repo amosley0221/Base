@@ -10,6 +10,17 @@ window.Sports = (function () {
     { sport: "basketball", league: "nba", label: "NBA" },
     { sport: "baseball", league: "mlb", label: "MLB" },
     { sport: "hockey", league: "nhl", label: "NHL" },
+    { sport: "football", league: "college-football", label: "CFB" },
+    { sport: "basketball", league: "mens-college-basketball", label: "CBB (M)" },
+    { sport: "basketball", league: "womens-college-basketball", label: "CBB (W)" },
+    { sport: "soccer", league: "eng.1", label: "EPL" },
+    { sport: "soccer", league: "uefa.champions", label: "UCL" },
+    { sport: "soccer", league: "usa.1", label: "MLS" },
+    { sport: "soccer", league: "esp.1", label: "La Liga" },
+    { sport: "soccer", league: "ita.1", label: "Serie A" },
+    { sport: "soccer", league: "ger.1", label: "Bundesliga" },
+    { sport: "soccer", league: "uefa.europa", label: "Europa" },
+    { sport: "basketball", league: "wnba", label: "WNBA" },
   ];
 
   function scoreOf(c) {
@@ -198,9 +209,12 @@ window.Sports = (function () {
       // period headers
       let periods = [];
       const maxLs = Math.max(home && home.linescores.length || 0, away && away.linescores.length || 0);
-      const pfx = sport === "baseball" ? (i) => String(i + 1) : (i) => "Q" + (i + 1);
-      const pfxH = sport === "hockey" ? (i) => "P" + (i + 1) : pfx;
-      for (let i = 0; i < maxLs; i++) periods.push(sport === "hockey" ? pfxH(i) : pfx(i));
+      let labeler;
+      if (sport === "baseball") labeler = (i) => String(i + 1);
+      else if (sport === "hockey") labeler = (i) => "P" + (i + 1);
+      else if (sport === "soccer") labeler = (i) => (i < 2 ? (i + 1) + "H" : "ET" + (i - 1));
+      else labeler = (i) => (i < 4 ? "Q" + (i + 1) : "OT" + (i - 3)); // football/basketball + OT
+      for (let i = 0; i < maxLs; i++) periods.push(labeler(i));
 
       // team stat comparison from boxscore
       const teamStats = [];
@@ -237,23 +251,24 @@ window.Sports = (function () {
     } catch (e) { return null; }
   }
 
-  // League news / insider headlines (Schefter, Woj, breaking, etc.)
-  async function news(sport, league, limit) {
+  return { LEAGUES, teamGame, teamList, leagueScoreboard, standings, gameSummary, news };
+
+  // Breaking news / insider posts for a league (ESPN news API)
+  async function news(sport, league) {
     try {
-      const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/news${limit ? "?limit=" + limit : ""}`;
+      const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/news`;
       const d = await (await fetch(url)).json();
       return (d.articles || []).map((a) => ({
-        headline: a.headline || a.title || "",
-        description: a.description || "",
+        headline: a.headline || a.shortHeadline || "",
+        desc: a.description || "",
         published: a.published || a.lastModified || "",
-        byline: a.byline || (a.source || ""),
+        byline: (a.byline || "").trim(),
+        league,
+        sport,
         type: a.type || "",
         premium: a.premium === true,
         link: (a.links && a.links.web && a.links.web.href) || "",
-        league,
       })).filter((x) => x.headline);
     } catch (e) { return null; }
   }
-
-  return { LEAGUES, teamGame, teamList, leagueScoreboard, standings, gameSummary, news };
 })();

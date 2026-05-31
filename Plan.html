@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BASE — Plan</title>
+<script>try{if(localStorage.getItem('base_theme')==='dark')document.documentElement.classList.add('mode-dark');}catch(e){}</script>
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#E8281E" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="BASE" />
+<link rel="apple-touch-icon" href="icons/base-180.png" />
+<link rel="icon" href="icons/base-32.png" />
+<link rel="stylesheet" href="app.css" />
+</head>
+<body>
+
+<header class="nav nav--solid" id="nav">
+  <a class="nav-brand" href="Home.html"><span class="glyph"></span>BASE</a>
+  <div class="nav-right">
+    <a class="theme-toggle" href="Settings.html" data-cursor aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </a>
+    <button class="theme-toggle" data-theme-toggle data-cursor aria-label="Toggle dark mode">
+      <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+      <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg>
+    </button>
+  </div>
+</header>
+
+<a class="back-home" href="Home.html" data-cursor>← Home</a>
+
+<main class="editor">
+  <div class="editor-head">
+    <div class="eyebrow">Plan</div>
+    <h1>Set up today.</h1>
+    <p>What you put here shows up on your Home page as you scroll. Keep the focus list short — three is plenty.</p>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <!-- YOU -->
+      <section class="card panel">
+        <div class="panel-title"><h2>You</h2></div>
+        <label class="label" for="name">Your name</label>
+        <input class="field" id="name" placeholder="What should Home call you?" style="margin-bottom:18px" />
+        <label class="label" for="major">Your major</label>
+        <input class="field" id="major" placeholder="e.g. Computer Engineering" />
+        <div style="margin-top:16px"><button class="btn btn--red" id="saveProfile">Save</button></div>
+      </section>
+
+      <!-- HABITS -->
+      <section class="card panel">
+        <div class="panel-title"><h2>Habits</h2><span class="hint">tap days on Home to check them off</span></div>
+        <div id="habitList"></div>
+        <div class="add-row">
+          <input class="field" id="habitName" placeholder="New habit (e.g. Stretch)" />
+          <input class="field" id="habitTarget" type="number" min="1" max="7" value="4" style="width:84px" title="days per week" />
+          <button class="btn" id="addHabit">Add</button>
+        </div>
+      </section>
+
+      <!-- TEAMS -->
+      <section class="card panel">
+        <div class="panel-title"><h2>Teams</h2><span class="hint">live scores on Home</span></div>
+        <div id="teamList"></div>
+        <div class="add-row" style="flex-wrap:wrap">
+          <select class="field" id="leagueSel" style="flex:0 0 110px"></select>
+          <select class="field" id="teamSel" style="flex:1;min-width:140px"></select>
+          <button class="btn" id="addTeam">Add</button>
+        </div>
+      </section>
+    </div>
+
+    <div>
+      <!-- TASKS -->
+      <section class="card panel">
+        <div class="panel-title"><h2>Tasks</h2><span class="hint">★ = today's focus</span></div>
+        <div id="taskList"></div>
+        <div class="add-row">
+          <input class="field" id="taskText" placeholder="Add a task and press Enter" />
+          <button class="btn btn--red" id="addTask">Add</button>
+        </div>
+      </section>
+
+      <section class="card panel" style="background:var(--paper)">
+        <div class="panel-title"><h2>Reset</h2></div>
+        <p class="muted" style="margin-bottom:16px">Start fresh with the sample data, or wipe everything to a blank slate.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn--ghost btn--sm" id="reseed">Restore sample data</button>
+          <button class="btn btn--ghost btn--sm danger" id="wipe" style="border-color:var(--red);color:var(--red)">Clear everything</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script src="store.js"></script>
+<script src="sports.js"></script>
+<script src="ui.js"></script>
+<script src="plan.js"></script>
+<script src="theme.js"></script>
+<script src="cursor.js"></script>
+<script src="pwa.js"></script>
+</body>
+</html>

@@ -14,12 +14,6 @@
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
   let state = S.load();
-  // defend against older saves missing the newer collections
-  state.budget = state.budget || {};
-  ["incomes", "bills", "subscriptions", "cards"].forEach((k) => { if (!Array.isArray(state.budget[k])) state.budget[k] = []; });
-  state.academics = state.academics || {};
-  ["courses", "assignments"].forEach((k) => { if (!Array.isArray(state.academics[k])) state.academics[k] = []; });
-  if (!Array.isArray(state.teams)) state.teams = [];
   const tIdx = S.todayIdx();
   let selDay = tIdx;
   let sportsToday = [];
@@ -219,13 +213,7 @@ ${items}
   }
   async function renderScores() {
     const grid = $("#scoreGrid");
-    if (!state.teams || !state.teams.length) {
-      grid.innerHTML = `<p class="muted">No teams yet — add some with “Edit teams”.</p>`;
-      const hero = $("#gameHero"); if (hero) hero.innerHTML = "";
-      const detail = $("#gameDetail"); if (detail) detail.innerHTML = "";
-      renderNews();
-      return;
-    }
+    if (!state.teams || !state.teams.length) { grid.innerHTML = `<p class="muted">No teams yet — add some on the Plan page.</p>`; return; }
     grid.innerHTML = state.teams.map((t) => `<div class="score-card" data-key="${t.league}-${t.id}"><div class="sc-head"><div class="sc-team">${esc(t.name)}</div></div><div class="sc-line muted">Loading…</div></div>`).join("");
     const results = await Promise.all(state.teams.map((t) => window.Sports.teamGame(t)));
     sportsToday = [];
@@ -235,667 +223,141 @@ ${items}
       if (res.todayGame) sportsToday.push({ team: res.team.name, time: res.todayGame.date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }), live: res.todayGame.state === "in" });
     });
     renderPreview();
-
-    // pick the most relevant game to feature: live > today > nearest upcoming > last
-    const withGame = results.filter((r) => r.chosen);
-    const prio = (r) => {
-      const g = r.chosen;
-      if (g.state === "in") return [0, 0];
-      if (r.todayGame) return [1, 0];
-      if (g.state === "pre") return [2, g.date ? g.date.getTime() : Infinity];
-      return [3, g.date ? -g.date.getTime() : 0];
-    };
-    withGame.sort((a, b) => { const pa = prio(a), pb = prio(b); return pa[0] - pb[0] || pa[1] - pb[1]; });
-    renderGameCenter(withGame[0]);
-    renderNews();
-  }
-
-  // ---------- GAME CENTER (featured matchup, box score, head-to-head) ----------
-  function teamMark(abbr, color) {
-    return `<span class="gc-mark" style="background:${color || "var(--ink)"}">${esc(abbr || "—")}</span>`;
-  }
-  function gcHero(side, g, sum) {
-    // prefer detailed summary sides; fall back to the schedule "chosen" game
-    const away = (sum && sum.away) || null;
-    const home = (sum && sum.home) || null;
-    const aAbbr = away ? away.abbr : (g.home ? (g.oppAbbr || g.opp) : (side.name));
-    const status = (sum && sum.detail) || g.detail || (g.state === "pre" ? fmtGameTime(g.date) : "");
-    const live = g.state === "in";
-    let aName, hName, aScore, hScore, aColor, hColor, aRec, hRec;
-    if (away && home) {
-      aName = away.name; hName = home.name; aScore = away.score; hScore = home.score;
-      aColor = away.color; hColor = home.color; aRec = away.record; hRec = home.record;
-    } else {
-      // derive from "chosen": our team + opponent, ordered away/home
-      const our = { name: side.name, score: g.ourScore, abbr: side.name };
-      const opp = { name: g.opp, score: g.oppScore, abbr: g.oppAbbr || g.opp };
-      const a = g.home ? opp : our, h = g.home ? our : opp;
-      aName = a.name; hName = h.name; aScore = a.score; hScore = h.score;
-    }
-    const sc = (v) => (v == null || v === "") ? "—" : v;
-    return `<div class="gc-kicker reveal">${esc((side.league || "").toUpperCase())} · Featured${live ? ` <span class="gc-status"><span class="gc-live-dot"></span>LIVE</span>` : ""}</div>
-      <div class="gc-matchup reveal">
-        <div class="gc-team away">${teamMark((away && away.abbr) || "", aColor)}<div class="gc-name">${esc(aName)}</div>${aRec ? `<div class="gc-rec">${esc(aRec)}</div>` : ""}</div>
-        <div class="gc-score-block">
-          <div class="gc-scores"><span class="away-s" data-count="${typeof aScore === "number" || /^\d+$/.test(aScore) ? +aScore : ""}">${sc(aScore)}</span><span class="dash">–</span><span class="home-s" data-count="${typeof hScore === "number" || /^\d+$/.test(hScore) ? +hScore : ""}">${sc(hScore)}</span></div>
-          <div class="gc-clock">${esc(status)}</div>
-        </div>
-        <div class="gc-team home">${teamMark((home && home.abbr) || "", hColor)}<div class="gc-name">${esc(hName)}</div>${hRec ? `<div class="gc-rec">${esc(hRec)}</div>` : ""}</div>
-      </div>`;
-  }
-  function gcPeriods(sum) {
-    if (!sum || !sum.periods || !sum.periods.length) return "";
-    const head = sum.periods.map((p) => `<th>${esc(p)}</th>`).join("");
-    const rowFor = (s) => `<tr><td>${esc(s.abbr || s.name)}</td>${sum.periods.map((_, i) => `<td>${esc(s.linescores[i] != null ? s.linescores[i] : "·")}</td>`).join("")}<td class="total">${esc(s.score != null ? s.score : "")}</td></tr>`;
-    return `<div class="gc-periods reveal"><table><thead><tr><th class="lead">TEAM</th>${head}<th>T</th></tr></thead>
-      <tbody>${rowFor(sum.away)}${rowFor(sum.home)}</tbody></table></div>`;
-  }
-  function gcCompare(sum) {
-    if (!sum || !sum.teamStats || !sum.teamStats.length) return "";
-    const rows = sum.teamStats.map((s) => {
-      const an = parseFloat(String(s.away).replace(/[^0-9.\-]/g, ""));
-      const hn = parseFloat(String(s.home).replace(/[^0-9.\-]/g, ""));
-      let bars = "";
-      if (isFinite(an) && isFinite(hn) && (an + hn) > 0) {
-        const aw = Math.round((an / (an + hn)) * 100), hw = 100 - aw;
-        bars = `<div class="cmp-bar"><i class="cmp-bar-fill away" style="--w:${aw}%"></i><i class="cmp-bar-fill home" style="--w:${hw}%"></i></div>`;
-      } else {
-        bars = `<div class="cmp-bar"></div>`;
-      }
-      return `<div class="cmp-row reveal"><div class="cmp-label">${esc(s.label)}</div>
-        <div class="cmp-val away">${esc(s.away)}</div>${bars}<div class="cmp-val home">${esc(s.home)}</div></div>`;
-    }).join("");
-    return `<div class="gc-sub reveal"><span class="eyebrow">Head to head</span></div><div class="compare">${rows}</div>`;
-  }
-  function gcArc(sum) {
-    // momentum: running (home − away) score differential across periods
-    if (!sum || !sum.periods || sum.periods.length < 2) return "";
-    const a = sum.away.linescores || [], h = sum.home.linescores || [];
-    let cum = 0; const diffs = [];
-    for (let i = 0; i < sum.periods.length; i++) {
-      const av = parseFloat(a[i]) || 0, hv = parseFloat(h[i]) || 0;
-      cum += hv - av; diffs.push(cum);
-    }
-    const W = 600, H = 150, mid = H / 2;
-    const maxAbs = Math.max(5, ...diffs.map((d) => Math.abs(d)));
-    const x = (i) => (i / (diffs.length - 1)) * W;
-    const y = (d) => mid - (d / maxAbs) * (mid - 12);
-    const line = diffs.map((d, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(d).toFixed(1)).join(" ");
-    const area = `M0 ${mid} ` + diffs.map((d, i) => `L${x(i).toFixed(1)} ${y(d).toFixed(1)}`).join(" ") + ` L${W} ${mid} Z`;
-    const leader = cum > 0 ? sum.home.abbr : cum < 0 ? sum.away.abbr : "Even";
-    const ticks = sum.periods.map((p, i) => `<span style="left:${(x(i) / W * 100).toFixed(1)}%">${esc(p)}</span>`).join("");
-    return `<div class="gc-sub reveal"><span class="eyebrow">Momentum</span><span class="gc-sub-note">${esc(leader)}${cum ? " ahead by " + Math.abs(cum) : ""}</span></div>
-      <div class="gc-arc reveal">
-        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="Score differential by period">
-          <line class="gc-arc-mid" x1="0" y1="${mid}" x2="${W}" y2="${mid}"></line>
-          <path class="gc-arc-area" d="${area}"></path>
-          <path class="gc-arc-line" pathLength="1" d="${line}"></path>
-        </svg>
-        <div class="gc-arc-x">${ticks}</div></div>`;
-  }
-  function gcLeaders(sum) {
-    if (!sum || !sum.leaders || !sum.leaders.length) return "";
-    const items = sum.leaders.map((l) => `<div class="gc-leader reveal"><span class="gl-cat">${esc(l.cat)}</span>
-      <span class="gl-who">${esc(l.who || "—")}</span><span class="gl-team">${esc(l.team || "")}</span><span class="gl-val">${esc(l.val || "")}</span></div>`).join("");
-    return `<div class="gc-sub reveal"><span class="eyebrow">Game leaders</span></div><div class="gc-leaders">${items}</div>`;
-  }
-
-  async function renderGameCenter(res) {
-    const hero = $("#gameHero"), detail = $("#gameDetail");
-    if (!hero) return;
-    if (!res || !res.chosen) { hero.innerHTML = ""; if (detail) detail.innerHTML = ""; return; }
-    const g = res.chosen, side = res.team;
-    hero.innerHTML = gcHero(side, g, null);                 // summary: matchup (always visible)
-    if (detail) detail.innerHTML = `<div class="gc-loading reveal">Pulling the box score…</div>`;
-    observeReveals();
-    const sum = (g.id) ? await window.Sports.gameSummary(side.sport, side.league, g.id) : null;
-    hero.innerHTML = gcHero(side, g, sum);
-    if (detail) {
-      detail.innerHTML = sum
-        ? (gcPeriods(sum) + gcCompare(sum) + gcArc(sum) + gcLeaders(sum))
-        : `<div class="gc-loading">${g.state === "pre" ? "Box score and momentum appear once the game tips off." : "Live game detail needs a connection."}</div>`;
-    }
-    observeReveals();
-  }
-
-  // ---------- NEWS / BREAKING ----------
-  function uniqueLeagues() {
-    const seen = {}, out = [];
-    (state.teams || []).forEach((t) => { const k = t.sport + "|" + t.league; if (!seen[k]) { seen[k] = 1; out.push({ sport: t.sport, league: t.league }); } });
-    return out;
-  }
-  function timeAgo(iso) {
-    const t = new Date(iso); if (isNaN(t)) return "";
-    const m = Math.round((Date.now() - t) / 60000);
-    if (m < 1) return "now"; if (m < 60) return m + "m";
-    const h = Math.round(m / 60); if (h < 24) return h + "h";
-    return Math.round(h / 24) + "d";
-  }
-  function renderPost(a) {
-    const ago = timeAgo(a.published);
-    const breaking = a.published && (Date.now() - new Date(a.published)) < 3 * 3600 * 1000;
-    const who = (a.byline || (a.league || "").toUpperCase() || "Newsroom").trim();
-    const initial = (who[0] || "•").toUpperCase();
-    const inner = `<div class="post-head"><span class="avatar">${esc(initial)}</span>
-        <div><div class="post-name">${esc(who)}</div><div class="post-handle">${esc((a.league || "").toUpperCase())}</div></div>
-        <span class="post-time">${breaking ? `<span class="brk">BREAKING</span> ` : ""}${ago}${a.link ? ` <span class="post-arr">↗</span>` : ""}</span></div>
-      <div class="post-body"><strong>${esc(a.headline)}</strong>${a.description ? ` ${esc(a.description)}` : ""}</div>`;
-    return a.link
-      ? `<a class="post reveal" href="${esc(a.link)}" target="_blank" rel="noopener" data-cursor>${inner}</a>`
-      : `<article class="post reveal">${inner}</article>`;
-  }
-  async function renderNews() {
-    const feed = $("#newsFeed"), head = $("#newsHead"); if (!feed) return;
-    const leagues = uniqueLeagues();
-    if (!leagues.length) { feed.innerHTML = ""; if (head) head.hidden = true; return; }
-    feed.innerHTML = `<div class="news-loading">Loading the latest…</div>`;
-    const lists = await Promise.all(leagues.map((l) => window.Sports.news(l.sport, l.league, 10)));
-    let items = [];
-    lists.forEach((L) => { if (L) items = items.concat(L); });
-    if (!items.length) { feed.innerHTML = `<div class="dd-empty">Headlines need a connection — they'll load when you're online.</div>`; if (head) head.hidden = false; return; }
-    items.sort((a, b) => new Date(b.published) - new Date(a.published));
-    if (head) head.hidden = false;
-    feed.innerHTML = items.slice(0, 8).map(renderPost).join("");
-    observeReveals();
   }
 
   // ---------- BUDGET ----------
   function money(n) { return "$" + Math.round(n).toLocaleString(); }
-
-  function budgetTotals(b) {
-    const taxRate = clamp(+b.taxRate || 0, 0, 0.6);
-    const incomeMo = (b.incomes || []).reduce((s, x) => s + (+x.amount || 0), 0);
-    const yearGross = incomeMo * 12;
-    const yearNet = yearGross * (1 - taxRate);
-    const netMo = yearNet / 12;
-    const bills = (b.bills || []).reduce((s, x) => s + (+x.amount || 0), 0);
-    const subs = (b.subscriptions || []).reduce((s, x) => s + (+x.amount || 0), 0);
-    const cards = b.cards || [];
-    const credit = cards.filter((c) => c.kind === "credit");
-    const debit = cards.filter((c) => c.kind !== "credit");
-    const creditDebt = credit.reduce((s, c) => s + (+c.balance || 0), 0);
-    const creditLimit = credit.reduce((s, c) => s + (+c.limit || 0), 0);
-    const cash = debit.reduce((s, c) => s + (+c.balance || 0), 0);
-    const outMo = bills + subs;
-    return { taxRate, incomeMo, yearGross, yearNet, netMo, bills, subs, credit, debit, creditDebt, creditLimit, cash, outMo, leftMo: netMo - outMo };
-  }
-
-  // dated obligations (bills + subscriptions + credit-card payments), soonest first
-  function dueItems(b) {
-    const items = [];
-    (b.bills || []).forEach((x) => { const d = S.nextDueDate(x.dueDay); if (d) items.push({ name: x.label || "Bill", amount: +x.amount || 0, date: d, kind: "bill" }); });
-    (b.subscriptions || []).forEach((x) => { const d = S.nextDueDate(x.dueDay); if (d) items.push({ name: x.label || "Subscription", amount: +x.amount || 0, date: d, kind: "sub" }); });
-    (b.cards || []).filter((c) => c.kind === "credit").forEach((c) => { const d = S.nextDueDate(c.dueDay); if (d) items.push({ name: (c.name || "Card") + " payment", amount: +c.balance || 0, date: d, kind: "card" }); });
-    return items.sort((a, c) => a.date - c.date);
-  }
-  function relDay(n) { return n <= 0 ? "today" : n === 1 ? "tomorrow" : "in " + n + " days"; }
-  function shortDate(d) { return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }); }
-
   function renderBudget() {
-    const b = state.budget;
-    const t = budgetTotals(b);
-
-    const tiles = [
-      { k: "Total cash", v: money(t.cash), s: t.debit.length + " account" + (t.debit.length === 1 ? "" : "s") },
-      { k: "Income / yr", v: money(t.yearGross), s: "before taxes" },
-      { k: "After taxes", v: money(t.yearNet), s: Math.round(t.taxRate * 100) + "% est. tax" },
-      { k: "Bills / mo", v: money(t.bills), s: (b.bills || []).length + " bills" },
-      { k: "Subscriptions / mo", v: money(t.subs), s: (b.subscriptions || []).length + " subs" },
-      { k: "Credit balance", v: money(t.creditDebt), s: t.creditLimit ? Math.round((t.creditDebt / t.creditLimit) * 100) + "% utilized" : t.credit.length + " card" + (t.credit.length === 1 ? "" : "s") },
-    ];
-    const ft = $("#finTiles");
-    if (ft) ft.innerHTML = tiles.map((x) => `<div class="fin-tile"><div class="ft-k">${esc(x.k)}</div><div class="ft-v">${x.v}</div><div class="ft-s">${esc(x.s)}</div></div>`).join("");
+    const b = state.budget || { incomes: [], expenses: [] };
+    const income = b.incomes.reduce((s, x) => s + (+x.amount || 0), 0);
+    const spend = b.expenses.reduce((s, x) => s + (+x.amount || 0), 0);
+    const left = income - spend;
+    const cats = { needs: 0, wants: 0, goals: 0 };
+    b.expenses.forEach((x) => { cats[x.cat] = (cats[x.cat] || 0) + (+x.amount || 0); });
+    const base = income || 1;
 
     const leftEl = $("#bdLeft");
     if (leftEl) {
-      leftEl.textContent = (t.leftMo < 0 ? "–" : "") + money(Math.abs(t.leftMo));
-      leftEl.classList.toggle("neg", t.leftMo < 0);
-      $("#bdIn").textContent = money(t.netMo);
-      $("#bdOut").textContent = money(t.outMo);
-      const base = Math.max(t.netMo, t.outMo) || 1;
-      const seg = (cat, val) => val > 0 ? `<i data-cat="${cat}" style="width:${(val / base) * 100}%"></i>` : "";
-      $("#bdBar").innerHTML = seg("bills", t.bills) + seg("subs", t.subs) + (t.leftMo > 0 ? seg("left", t.leftMo) : "");
-      renderSpark(b, t.leftMo);
-    }
+      leftEl.textContent = (left < 0 ? "–" : "") + money(Math.abs(left));
+      leftEl.classList.toggle("neg", left < 0);
+      $("#bdIn").textContent = money(income);
+      $("#bdOut").textContent = money(spend);
+      const segs = ["needs", "wants", "goals"].map((c) => `<i data-cat="${c}" style="width:${(cats[c] / base) * 100}%"></i>`).join("");
+      const leftSeg = left > 0 ? `<i data-cat="left" style="width:${(left / base) * 100}%"></i>` : "";
+      $("#bdBar").innerHTML = segs + leftSeg;
 
-    const due = dueItems(b);
-    const dueEl = $("#bdDue");
-    if (dueEl) {
-      const within = due.filter((x) => S.daysUntilDate(x.date) <= 30);
-      const totEl = $("#bdDueTotal");
-      if (totEl) totEl.textContent = within.length ? money(within.reduce((s, x) => s + x.amount, 0)) + " in 30 days" : "";
-      dueEl.innerHTML = due.length ? due.slice(0, 6).map((x) => {
-        const n = S.daysUntilDate(x.date);
-        return `<div class="due-row ${n <= 3 ? "soon" : ""}">
-          <span class="due-dot" data-kind="${x.kind}"></span>
-          <div class="due-main"><div class="due-name">${esc(x.name)}</div><div class="due-when">${shortDate(x.date)} · ${relDay(n)}</div></div>
-          <div class="due-amt">${money(x.amount)}</div></div>`;
-      }).join("") : `<div class="dd-empty">No dated bills yet.</div>`;
-    }
+      const labels = { needs: "Needs", wants: "Wants", goals: "Saving & goals" };
+      $("#bdCats").innerHTML = ["needs", "wants", "goals"].map((c) => `
+        <div class="bd-cat">
+          <div class="bd-cat-top">
+            <div class="bd-name"><i data-cat="${c}"></i>${labels[c]}</div>
+            <div class="bd-sum">${money(cats[c])} · ${Math.round((cats[c] / base) * 100)}%</div>
+          </div>
+          <div class="bd-track"><i data-cat="${c}" style="width:${Math.min(100, (cats[c] / base) * 100)}%"></i></div>
+        </div>`).join("");
 
-    const cardsEl = $("#bdCards");
-    if (cardsEl) {
-      const cards = b.cards || [];
-      cardsEl.innerHTML = cards.length ? cards.map((c) => {
-        if (c.kind === "credit") {
-          const util = c.limit ? Math.min(100, ((+c.balance || 0) / c.limit) * 100) : 0;
-          const d = S.nextDueDate(c.dueDay);
-          return `<div class="acct-card credit">
-            <div class="ac-top"><span class="ac-name">${esc(c.name || "Card")}</span><span class="ac-kind">Credit</span></div>
-            <div class="ac-bal">${money(c.balance)}</div>
-            <div class="ac-sub">${c.limit ? "of " + money(c.limit) + " limit" : "balance"}${d ? " · due " + shortDate(d) : ""}</div>
-            <div class="ac-track"><i style="width:${util}%"></i></div></div>`;
-        }
-        return `<div class="acct-card debit">
-          <div class="ac-top"><span class="ac-name">${esc(c.name || "Account")}</span><span class="ac-kind">Debit</span></div>
-          <div class="ac-bal">${money(c.balance)}</div>
-          <div class="ac-sub">available cash</div></div>`;
-      }).join("") : `<div class="dd-empty">No cards yet — add one with “Edit budget”.</div>`;
-    }
-
-    // condensed summary (always visible on scroll)
-    const sumEl = $("#budgetSummary");
-    if (sumEl) {
-      const next = due[0];
-      const within = due.filter((x) => S.daysUntilDate(x.date) <= 30).reduce((s, x) => s + x.amount, 0);
-      sumEl.innerHTML =
-        `<div class="sum-chip"><div class="sc-k">Cash on hand</div><div class="sc-v">${money(t.cash)}</div></div>
-         <div class="sum-chip"><div class="sc-k">Left this month</div><div class="sc-v ${t.leftMo < 0 ? "neg" : ""}">${(t.leftMo < 0 ? "–" : "") + money(Math.abs(t.leftMo))}</div></div>
-         ${next
-            ? `<div class="sum-chip alert"><div class="sc-k">Next bill</div><div class="sc-v">${esc(next.name)} · ${money(next.amount)}</div><div class="sc-s">${shortDate(next.date)} · ${relDay(S.daysUntilDate(next.date))}</div></div>`
-            : `<div class="sum-chip"><div class="sc-k">Bills</div><div class="sc-v">All clear</div></div>`}
-         <div class="sum-chip"><div class="sc-k">Due in 30 days</div><div class="sc-v">${money(within)}</div></div>`;
-    }
-  }
-
-  function renderSpark(b, left) {
-    const spark = $("#bdSpark"); if (!spark) return;
-    const cur = S.isoMonth();
-    const data = (b.history || []).filter((h) => h.month !== cur).map((h) => ({ left: h.income - h.spend }));
-    data.push({ left });
-    const pts = data.slice(-7);
-    if (pts.length < 2) { spark.innerHTML = ""; return; }
-    const W = 280, H = 54;
-    const vals = pts.map((p) => p.left);
-    const max = Math.max(...vals, 0), min = Math.min(...vals, 0);
-    const span = (max - min) || 1;
-    const x = (i) => (i / (pts.length - 1)) * W;
-    const y = (v) => H - 4 - ((v - min) / span) * (H - 8);
-    const d = pts.map((p, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p.left).toFixed(1)).join(" ");
-    const area = `M0 ${H} ` + pts.map((p, i) => `L${x(i).toFixed(1)} ${y(p.left).toFixed(1)}`).join(" ") + ` L${W} ${H} Z`;
-    const change = left - pts[0].left;
-    spark.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="Leftover trend">
-      <path class="sp-area" d="${area}"></path><path class="sp-line" d="${d}"></path>
-      <circle class="sp-dot" cx="${x(pts.length - 1).toFixed(1)}" cy="${y(pts[pts.length - 1].left).toFixed(1)}" r="3"></circle></svg>
-      <div class="sp-cap">leftover · ${change >= 0 ? "up" : "down"} ${money(Math.abs(change))} over ${pts.length} months</div>`;
-  }
-
-  // ---------- ACADEMICS / GPA ----------
-  const SEASON = { spring: 1, summer: 2, fall: 3, winter: 4 };
-  function termOrder(term) {
-    const m = String(term).match(/(spring|summer|fall|winter)\s+(\d{4})/i);
-    return m ? (+m[2]) * 10 + (SEASON[m[1].toLowerCase()] || 0) : 0;
-  }
-  function gpaCompute(a) {
-    let qpDone = (+a.priorGpa || 0) * (+a.priorCredits || 0);
-    let crDone = (+a.priorCredits || 0);    // graded credits (GPA denominator)
-    let earned = (+a.priorCredits || 0);    // credits earned toward the degree
-    let qpProj = qpDone, crProj = crDone, inProgress = 0;
-    (a.courses || []).forEach((c) => {
-      const cr = +c.credits || 0;
-      if (c.status === "completed") {
-        const gp = S.gradePoints(c.grade);
-        if (gp != null) { qpDone += gp * cr; crDone += cr; qpProj += gp * cr; crProj += cr; if (c.grade !== "F") earned += cr; }
-      } else {
-        if (c.status === "in-progress") inProgress += cr;
-        const gp = S.gradePoints(c.expected);
-        if (gp != null) { qpProj += gp * cr; crProj += cr; }
+      // savings sparkline from history + this month
+      const spark = $("#bdSpark");
+      if (spark) {
+        const hist = (b.history || []).slice();
+        const cur = S.isoMonth();
+        const data = hist.filter((h) => h.month !== cur).map((h) => ({ month: h.month, left: h.income - h.spend }));
+        data.push({ month: cur, left });
+        const pts = data.slice(-7);
+        if (pts.length >= 2) {
+          const W = 280, H = 54;
+          const vals = pts.map((p) => p.left);
+          const max = Math.max(...vals, 0), min = Math.min(...vals, 0);
+          const span = (max - min) || 1;
+          const x = (i) => (i / (pts.length - 1)) * W;
+          const y = (v) => H - 4 - ((v - min) / span) * (H - 8);
+          const d = pts.map((p, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p.left).toFixed(1)).join(" ");
+          const area = `M0 ${H} ` + pts.map((p, i) => `L${x(i).toFixed(1)} ${y(p.left).toFixed(1)}`).join(" ") + ` L${W} ${H} Z`;
+          const lastX = x(pts.length - 1), lastY = y(pts[pts.length - 1].left);
+          const first = pts[0].left, change = left - first;
+          spark.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="Savings trend">
+            <path class="sp-area" d="${area}"></path><path class="sp-line" d="${d}"></path>
+            <circle class="sp-dot" cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="3"></circle></svg>
+            <div class="sp-cap">savings · ${change >= 0 ? "up" : "down"} ${money(Math.abs(change))} over ${pts.length} months</div>`;
+        } else { spark.innerHTML = ""; }
       }
-    });
-    return { current: crDone ? qpDone / crDone : 0, projected: crProj ? qpProj / crProj : 0, earned, inProgress, required: +a.requiredCredits || 0 };
-  }
-  function gpaClass(v) { return v >= 3.5 ? "good" : v >= 2.5 ? "ok" : "low"; }
-
-  function renderAcademics() {
-    const a = state.academics;
-    const g = gpaCompute(a);
-    const now = $("#gpaNow"), proj = $("#gpaProj");
-    if (now) { now.textContent = g.current.toFixed(2); now.className = "n " + gpaClass(g.current); }
-    if (proj) { proj.textContent = g.projected.toFixed(2); proj.className = "n " + gpaClass(g.projected); }
-
-    const needed = Math.max(0, g.required - g.earned);
-    const pct = g.required ? Math.min(100, (g.earned / g.required) * 100) : 0;
-    const fill = $("#credFill");
-    if (fill) { fill.style.strokeDasharray = RC; fill.style.strokeDashoffset = RC * (1 - pct / 100); }
-    const pctEl = $("#credPct"); if (pctEl) pctEl.textContent = Math.round(pct) + "%";
-    const meta = $("#credMeta");
-    if (meta) meta.innerHTML = `<div><span class="cm-n">${g.earned}</span><span class="cm-k">earned</span></div>
-      <div><span class="cm-n">${needed}</span><span class="cm-k">to go</span></div>
-      <div><span class="cm-n">${g.required}</span><span class="cm-k">required</span></div>`;
-
-    const courses = a.courses || [];
-    const terms = {};
-    courses.forEach((c) => { (terms[c.term] = terms[c.term] || []).push(c); });
-    const termNames = Object.keys(terms).sort((x, y) => termOrder(x) - termOrder(y));
-    const curTerm = (courses.find((c) => c.status === "in-progress") || {}).term || termNames[termNames.length - 1] || "—";
-    const tiles = [
-      { k: "Credits earned", v: g.earned, s: "of " + g.required },
-      { k: "In progress", v: g.inProgress, s: "credits this term" },
-      { k: "Classes this term", v: (terms[curTerm] || []).length, s: curTerm },
-      { k: "Credits to go", v: needed, s: "to graduate" },
-    ];
-    const at = $("#acadTiles");
-    if (at) at.innerHTML = tiles.map((x) => `<div class="fin-tile"><div class="ft-k">${esc(x.k)}</div><div class="ft-v">${x.v}</div><div class="ft-s">${esc(x.s)}</div></div>`).join("");
-
-    // condensed summary (always visible on scroll)
-    const sumEl = $("#acadSummary");
-    if (sumEl) {
-      const aList = (a.assignments || []).map((x) => ({ ...x, days: x.due ? S.daysUntil(x.due) : null }))
-        .filter((x) => !x.done).sort((p, q) => (p.days == null ? 1e9 : p.days) - (q.days == null ? 1e9 : q.days));
-      const nx = aList[0];
-      const whenA = nx ? (nx.days == null ? "" : nx.days <= 0 ? "due today" : nx.days === 1 ? "due tomorrow" : "in " + nx.days + " days") : "";
-      sumEl.innerHTML =
-        `<div class="sum-chip"><div class="sc-k">GPA</div><div class="sc-v ${gpaClass(g.current)}">${g.current.toFixed(2)} <span class="sc-arrow">→ ${g.projected.toFixed(2)}</span></div></div>
-         <div class="sum-chip"><div class="sc-k">Credits to go</div><div class="sc-v">${needed}</div></div>
-         ${nx
-            ? `<div class="sum-chip alert"><div class="sc-k">Next due</div><div class="sc-v">${esc(nx.title || "Assignment")}</div><div class="sc-s">${whenA}${nx.course ? " · " + esc(nx.course) : ""}</div></div>`
-            : `<div class="sum-chip"><div class="sc-k">Assignments</div><div class="sc-v">All clear</div></div>`}`;
     }
 
-    renderAssignments();
+    // budget strip: total cash, bills due, next payment
+    const strip = $("#bdStrip");
+    if (strip) {
+      const accounts = b.accounts || [], bills = b.bills || [], subs = b.subscriptions || [];
+      const cash = accounts.filter((a) => a.type === "debit").reduce((s, a) => s + (+a.balance || 0), 0);
+      const creditOwed = accounts.filter((a) => a.type === "credit").reduce((s, a) => s + (+a.balance || 0), 0);
+      const billsTotal = bills.reduce((s, x) => s + (+x.amount || 0), 0);
 
-    const tEl = $("#acadTerms");
-    if (tEl) {
-      tEl.innerHTML = termNames.slice().reverse().map((tn) => {
-        const cs = terms[tn];
-        let qp = 0, cr = 0;
-        cs.forEach((c) => { const gp = c.status === "completed" ? S.gradePoints(c.grade) : null; if (gp != null) { qp += gp * (+c.credits || 0); cr += +c.credits || 0; } });
-        const tg = cr ? (qp / cr).toFixed(2) : "—";
-        const credits = cs.reduce((s, c) => s + (+c.credits || 0), 0);
-        const rows = cs.map((c) => {
-          const grade = c.status === "completed" ? (c.grade || "—") : (c.expected ? c.expected + "*" : "—");
-          return `<div class="term-row"><span class="tr-code">${esc(c.code || "")}</span><span class="tr-name">${esc(c.name)}</span><span class="tr-cr">${c.credits}cr</span><span class="tr-grade">${esc(grade)}</span></div>`;
-        }).join("");
-        return `<div class="term-block"><div class="term-head"><h4>${esc(tn)}</h4><span class="term-gpa">GPA ${tg} · ${credits}cr</span></div>${rows}</div>`;
+      // soonest upcoming payment across bills, subs, credit cards
+      const due = [];
+      bills.forEach((x) => { if (x.due) due.push({ name: x.label, amount: +x.amount || 0, due: x.due, d: S.daysUntilDom(x.due) }); });
+      subs.forEach((x) => { if (x.due) due.push({ name: x.label, amount: +x.amount || 0, due: x.due, d: S.daysUntilDom(x.due) }); });
+      accounts.forEach((a) => { if (a.type === "credit" && a.due) due.push({ name: a.label + " payment", amount: +a.balance || 0, due: a.due, d: S.daysUntilDom(a.due) }); });
+      due.sort((a, z) => a.d - z.d);
+      const next = due[0];
+      const soonTotal = due.filter((x) => x.d <= 30).reduce((s, x) => s + x.amount, 0);
+
+      let nextHtml = `<div class="bt-s">Nothing scheduled</div>`;
+      if (next) {
+        const when = next.d === 0 ? "Today" : next.d === 1 ? "Tomorrow" : "in " + next.d + " days";
+        nextHtml = `<div class="bt-next"><div class="day ${next.d <= 5 ? "soon" : ""}">${next.due}</div>
+          <div><div class="nm">${money(next.amount)} · ${next.name}</div><div class="wh">${when}</div></div></div>`;
+      }
+      strip.innerHTML = `
+        <div class="bd-tile"><div class="bt-n pos">${money(cash)}</div><div class="bt-k">Total cash</div><div class="bt-s">${creditOwed > 0 ? money(creditOwed) + " owed on cards" : "no card balances"}</div></div>
+        <div class="bd-tile"><div class="bt-n">${money(soonTotal)}</div><div class="bt-k">Due this month</div><div class="bt-s">${due.length} payment${due.length === 1 ? "" : "s"} · ${money(billsTotal)} in bills</div></div>
+        <div class="bd-tile"><div class="bt-k" style="margin-top:0">Next payment</div>${nextHtml}</div>`;
+    }
+  }
+
+  // ---------- SCHOOL ----------
+  function gpaOf(list) {
+    let pts = 0, cr = 0;
+    (list || []).forEach((c) => { const p = S.gradePoints(c.grade); const k = +c.credits || 0; if (p != null) { pts += p * k; cr += k; } });
+    return { gpa: cr ? pts / cr : null, credits: cr };
+  }
+  function renderSchool() {
+    const sc = state.school; if (!sc) return;
+    const cur = gpaOf(sc.completed);
+    const all = gpaOf((sc.completed || []).concat(sc.planned || []));
+    const needed = +sc.creditsNeeded || 0;
+
+    const dial = $("#sgDial");
+    if (dial) {
+      const R = 80, C = 2 * Math.PI * R;
+      const frac = (cur.gpa || 0) / 4, pfrac = (all.gpa || 0) / 4;
+      dial.innerHTML = `<svg viewBox="0 0 190 190">
+        <circle class="track" cx="95" cy="95" r="${R}"></circle>
+        <circle class="proj" cx="95" cy="95" r="${R}" stroke-dasharray="${C}" stroke-dashoffset="${(C * (1 - pfrac)).toFixed(1)}"></circle>
+        <circle class="fill" cx="95" cy="95" r="${R}" stroke-dasharray="${C}" stroke-dashoffset="${(C * (1 - frac)).toFixed(1)}"></circle>
+      </svg><div class="center"><div>
+        <div class="g">${cur.gpa != null ? cur.gpa.toFixed(2) : "—"}</div>
+        <div class="lt">${cur.gpa != null ? S.gpaLetter(cur.gpa) : ""}</div></div></div>`;
+    }
+    const stats = $("#sgStats");
+    if (stats) {
+      stats.innerHTML = `
+        <div class="sgs"><div class="n proj">${all.gpa != null ? all.gpa.toFixed(2) : "—"}</div><div class="k">Projected GPA</div></div>
+        <div class="sgs"><div class="n">${cur.credits}<span class="u">/${needed}</span></div><div class="k">Credits done</div></div>
+        <div class="sgs"><div class="n">${Math.max(0, needed - cur.credits)}</div><div class="k">Credits left</div></div>`;
+    }
+    const al = $("#sgAsgn");
+    if (al) {
+      const items = (sc.assignments || []).filter((a) => !a.done).map((a) => ({ ...a, d: S.daysUntil(a.due) })).sort((x, y) => x.d - y.d).slice(0, 4);
+      if (!items.length) { al.innerHTML = `<div class="sa-empty">Nothing due — you're clear.</div>`; return; }
+      al.innerHTML = items.map((a) => {
+        let cls = "", txt = "";
+        if (a.d < 0) { cls = "over"; txt = Math.abs(a.d) + "d late"; }
+        else if (a.d === 0) { cls = "today"; txt = "Today"; }
+        else if (a.d === 1) { cls = "soon"; txt = "Tomorrow"; }
+        else if (a.d <= 3) { cls = "soon"; txt = "in " + a.d + "d"; }
+        else { const p = a.due.split("-"); txt = new Date(p[0], +p[1] - 1, +p[2]).toLocaleDateString(undefined, { month: "short", day: "numeric" }); }
+        return `<div class="sa-row"><div class="sa-main"><div class="sa-t">${esc(a.title)}</div>${a.course ? `<div class="sa-c">${esc(a.course)}</div>` : ""}</div><span class="sa-due ${cls}">${txt}</span></div>`;
       }).join("");
     }
-  }
-
-  function renderAssignments() {
-    const a = state.academics;
-    const list = (a.assignments || []).map((x) => ({ ...x, days: x.due ? S.daysUntil(x.due) : null }))
-      .filter((x) => !x.done)
-      .sort((p, q) => (p.days == null ? 1e9 : p.days) - (q.days == null ? 1e9 : q.days));
-    const el = $("#acadAssign");
-    if (!el) return;
-    if (!list.length) { el.innerHTML = `<div class="dd-empty">Nothing due — you're clear.</div>`; return; }
-    el.innerHTML = list.slice(0, 6).map((x) => {
-      const when = x.days == null ? "" : x.days <= 0 ? "due today" : x.days === 1 ? "due tomorrow" : "in " + x.days + " days";
-      return `<div class="assign-row ${x.days != null && x.days <= 2 ? "soon" : ""}" data-id="${x.id}">
-        <span class="check" role="button" aria-label="mark done"></span>
-        <div class="assign-main"><div class="assign-title">${esc(x.title || "Untitled")}</div>
-          <div class="assign-sub">${esc(x.course || "")}${x.course && when ? " · " : ""}${when}</div></div></div>`;
-    }).join("");
-    $$("#acadAssign .assign-row").forEach((row) => row.querySelector(".check").addEventListener("click", () => {
-      const it = (state.academics.assignments || []).find((y) => y.id === row.dataset.id);
-      if (it) { it.done = true; persist(); renderAssignments(); }
-    }));
-  }
-
-  // ---------- EDITOR SHEET (budget / courses) ----------
-  const sheet = $("#sheet"), sheetBody = $("#sheetBody"), sheetTitle = $("#sheetTitle");
-  let sheetKind = null;
-  function grpArray(grp) {
-    return { incomes: state.budget.incomes, bills: state.budget.bills, subscriptions: state.budget.subscriptions,
-      cards: state.budget.cards, courses: state.academics.courses, assignments: state.academics.assignments }[grp] || null;
-  }
-  function liveRender() { if (sheetKind === "budget") renderBudget(); else if (sheetKind === "acad") renderAcademics(); else if (sheetKind === "teams") renderScores(); }
-  function attr(v) { return v == null ? "" : String(v).replace(/"/g, "&quot;"); }
-  function inp(grp, id, f, value, o) {
-    o = o || {};
-    if (o.options) return `<select class="field field--sm" data-grp="${grp}" data-id="${id}" data-field="${f}">${o.options.map((op) => `<option value="${attr(op)}" ${String(value || "") === String(op) ? "selected" : ""}>${op === "" ? "—" : op}</option>`).join("")}</select>`;
-    const type = o.type || "text";
-    return `<input class="field field--sm" type="${type}" ${type === "number" ? 'inputmode="decimal"' : ""} data-grp="${grp}" data-id="${id}" data-field="${f}" value="${attr(value)}" placeholder="${o.ph || ""}" />`;
-  }
-  function row(inner, grp, id) { return `<div class="ed-row" data-grp="${grp}" data-id="${id}">${inner}<button class="ed-del" type="button" data-del aria-label="Remove" data-cursor>&times;</button></div>`; }
-  const emptyHint = (t) => `<div class="dd-empty">${t}</div>`;
-
-  function buildBudgetSheet() {
-    const b = state.budget;
-    const inc = (b.incomes || []).map((x) => row(inp("incomes", x.id, "label", x.label, { ph: "Source" }) + inp("incomes", x.id, "amount", x.amount, { type: "number", ph: "$/mo" }), "incomes", x.id)).join("");
-    const billRow = (grp) => (b[grp] || []).map((x) => row(
-      inp(grp, x.id, "label", x.label, { ph: grp === "bills" ? "Bill" : "Subscription" }) +
-      inp(grp, x.id, "amount", x.amount, { type: "number", ph: "$/mo" }) +
-      inp(grp, x.id, "dueDay", x.dueDay, { type: "number", ph: "Due day" }), grp, x.id)).join("");
-    const cards = (b.cards || []).map((x) => row(
-      inp("cards", x.id, "kind", x.kind, { options: ["debit", "credit"] }) +
-      inp("cards", x.id, "name", x.name, { ph: "Card / account" }) +
-      inp("cards", x.id, "balance", x.balance, { type: "number", ph: "Balance" }) +
-      inp("cards", x.id, "limit", x.limit, { type: "number", ph: "Limit" }) +
-      inp("cards", x.id, "dueDay", x.dueDay, { type: "number", ph: "Due day" }), "cards", x.id)).join("");
-    sheetBody.innerHTML =
-      `<div class="ed-group"><div class="ed-grp-head"><h4>Income <span>monthly, gross</span></h4><button class="ed-add" type="button" data-add="incomes" data-cursor>+ Add</button></div>${inc || emptyHint("No income yet")}</div>
-       <div class="ed-group"><div class="ed-grp-head"><h4>Estimated tax rate</h4></div><div class="ed-row single"><input class="field field--sm" type="number" inputmode="decimal" data-tax value="${Math.round((+b.taxRate || 0) * 100)}" /><span class="ed-unit">% — used for take-home estimates</span></div></div>
-       <div class="ed-group"><div class="ed-grp-head"><h4>Bills <span>name · amount · due day</span></h4><button class="ed-add" type="button" data-add="bills" data-cursor>+ Add</button></div>${billRow("bills") || emptyHint("No bills yet")}</div>
-       <div class="ed-group"><div class="ed-grp-head"><h4>Subscriptions <span>name · amount · due day</span></h4><button class="ed-add" type="button" data-add="subscriptions" data-cursor>+ Add</button></div>${billRow("subscriptions") || emptyHint("No subscriptions yet")}</div>
-       <div class="ed-group"><div class="ed-grp-head"><h4>Cards &amp; accounts <span>credit = owed · debit = cash</span></h4><button class="ed-add" type="button" data-add="cards" data-cursor>+ Add</button></div>${cards || emptyHint("No cards yet")}</div>`;
-    wireSheet();
-  }
-
-  function buildAcadSheet() {
-    const a = state.academics;
-    const grades = ["", ...S.GRADE_LIST];
-    const courses = (a.courses || []).map((c) => row(
-      inp("courses", c.id, "code", c.code, { ph: "Code" }) +
-      inp("courses", c.id, "name", c.name, { ph: "Course" }) +
-      inp("courses", c.id, "credits", c.credits, { type: "number", ph: "Cr" }) +
-      inp("courses", c.id, "status", c.status, { options: ["completed", "in-progress", "planned"] }) +
-      inp("courses", c.id, "grade", c.grade, { options: grades }) +
-      inp("courses", c.id, "expected", c.expected, { options: grades }) +
-      inp("courses", c.id, "term", c.term, { ph: "Term e.g. Fall 2026" }), "courses", c.id)).join("");
-    const assigns = (a.assignments || []).map((x) => row(
-      inp("assignments", x.id, "title", x.title, { ph: "Assignment" }) +
-      inp("assignments", x.id, "course", x.course, { ph: "Course" }) +
-      inp("assignments", x.id, "due", x.due, { type: "date" }) +
-      `<label class="ed-done"><input type="checkbox" data-grp="assignments" data-id="${x.id}" data-field="done" ${x.done ? "checked" : ""} />done</label>`, "assignments", x.id)).join("");
-    sheetBody.innerHTML =
-      `<div class="ed-group"><div class="ed-grp-head"><h4>Degree</h4></div><div class="ed-row trio">
-         <label class="ed-lab">Required credits<input class="field field--sm" type="number" data-acad="requiredCredits" value="${+a.requiredCredits || 0}" /></label>
-         <label class="ed-lab">Prior credits<input class="field field--sm" type="number" data-acad="priorCredits" value="${+a.priorCredits || 0}" /></label>
-         <label class="ed-lab">Prior GPA<input class="field field--sm" type="number" step="0.01" data-acad="priorGpa" value="${+a.priorGpa || 0}" /></label></div></div>
-       <div class="ed-group"><div class="ed-grp-head"><h4>Courses <span>completed → grade · else → expected*</span></h4><button class="ed-add" type="button" data-add="courses" data-cursor>+ Add</button></div>${courses || emptyHint("No courses yet")}</div>
-       <div class="ed-group"><div class="ed-grp-head"><h4>Assignments <span>title · course · due date</span></h4><button class="ed-add" type="button" data-add="assignments" data-cursor>+ Add</button></div>${assigns || emptyHint("No assignments yet")}</div>`;
-    wireSheet();
-  }
-
-  function buildSheet() {
-    if (sheetKind === "budget") buildBudgetSheet();
-    else if (sheetKind === "teams") buildTeamsSheet();
-    else if (sheetKind === "pdf") buildPdfSheet();
-    else buildAcadSheet();
-  }
-
-  // ----- teams editor (scoreboard) -----
-  function buildTeamsSheet() {
-    const teams = state.teams || [];
-    const rows = teams.length ? teams.map((t) => `<div class="ed-row team-row">
-        <span class="team-chip">${esc((t.league || "").toUpperCase())}</span>
-        <span class="team-name">${esc(t.name)}</span>
-        <button class="ed-del" type="button" data-del-team="${esc(t.id)}|${esc(t.league)}" aria-label="Remove" data-cursor>&times;</button>
-      </div>`).join("") : emptyHint("No teams yet — add some below.");
-    const leagueOpts = window.Sports.LEAGUES.map((l) => `<option value="${l.sport}|${l.league}">${l.label}</option>`).join("");
-    sheetBody.innerHTML =
-      `<div class="ed-group"><div class="ed-grp-head"><h4>Your teams</h4></div>${rows}</div>
-       <div class="ed-group"><div class="ed-grp-head"><h4>Add a team</h4></div>
-         <div class="ed-row"><select class="field field--sm" id="tmLeague">${leagueOpts}</select>
-           <select class="field field--sm" id="tmTeam" style="flex:1.6"><option value="">Loading…</option></select>
-           <button class="ed-add" type="button" id="tmAdd" data-cursor>+ Add</button></div>
-         <div class="ed-hint" id="tmHint"></div></div>`;
-    const leagueSel = $("#tmLeague"), teamSel = $("#tmTeam"), hint = $("#tmHint");
-    async function loadTeams() {
-      teamSel.innerHTML = `<option value="">Loading…</option>`; hint.textContent = "";
-      const [sport, league] = leagueSel.value.split("|");
-      const list = await window.Sports.teamList(sport, league);
-      if (!list.length) { teamSel.innerHTML = `<option value="">— couldn't load —</option>`; hint.textContent = "Connect to the internet to pick teams."; return; }
-      teamSel.innerHTML = list.map((t) => `<option value="${esc(t.id)}|${esc(t.name)}">${esc(t.name)}</option>`).join("");
-    }
-    leagueSel.addEventListener("change", loadTeams);
-    loadTeams();
-    $("#tmAdd").addEventListener("click", () => {
-      const [sport, league] = leagueSel.value.split("|");
-      const val = teamSel.value; if (!val) return;
-      const sep = val.indexOf("|"); const id = val.slice(0, sep), name = val.slice(sep + 1);
-      if ((state.teams || []).some((t) => t.id === id && t.league === league)) { toast(name + " is already added"); return; }
-      state.teams.push({ id, sport, league, name });
-      persist(); buildTeamsSheet(); renderScores(); toast("Added " + name);
-    });
-    $$("[data-del-team]", sheetBody).forEach((btn) => btn.addEventListener("click", () => {
-      const v = btn.dataset.delTeam, sep = v.indexOf("|"); const id = v.slice(0, sep), league = v.slice(sep + 1);
-      const i = state.teams.findIndex((t) => t.id === id && t.league === league);
-      if (i >= 0) state.teams.splice(i, 1);
-      persist(); buildTeamsSheet(); renderScores();
-    }));
-  }
-
-  // ----- export to PDF (whole page or selected sections) -----
-  function buildPdfSheet() {
-    const secs = $$("[data-nav][data-label]");
-    const rows = secs.map((s, i) => `<label class="pdf-row"><input type="checkbox" class="pdf-sec" value="${i}" checked /> <span>${esc(s.dataset.label)}</span></label>`).join("");
-    sheetBody.innerHTML =
-      `<p class="pdf-hint">Pick the sections to include, then save. On your phone choose “Save to Files” or share the PDF to keep it.</p>
-       <div class="pdf-list">${rows}</div>
-       <div class="pdf-actions"><button class="btn btn--red btn--sm" type="button" id="pdfGo" data-cursor>Save as PDF</button>
-         <button class="btn btn--ghost btn--sm" type="button" id="pdfAll" data-cursor>Select all</button></div>`;
-    $("#pdfAll").addEventListener("click", () => $$(".pdf-sec", sheetBody).forEach((c) => { c.checked = true; }));
-    $("#pdfGo").addEventListener("click", () => {
-      const idxs = $$(".pdf-sec", sheetBody).filter((c) => c.checked).map((c) => +c.value);
-      if (!idxs.length) { toast("Pick at least one section"); return; }
-      runPdf(idxs);
-    });
-  }
-  function runPdf(idxs) {
-    const secs = $$("[data-nav][data-label]");
-    secs.forEach((s, i) => s.classList.toggle("print-include", idxs.indexOf(i) >= 0));
-    document.body.classList.add("printing");
-    closeSheet();
-    setTimeout(() => window.print(), 180);
-  }
-  window.addEventListener("afterprint", () => {
-    document.body.classList.remove("printing");
-    $$("[data-nav]").forEach((s) => s.classList.remove("print-include"));
-  });
-
-  // ----- backup / restore (file) + durable storage -----
-  let toastT;
-  function toast(msg) {
-    const el = $("#toast"); if (!el) return;
-    el.textContent = msg; el.classList.add("show");
-    clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove("show"), 2400);
-  }
-  function downloadBlob(blob, fname) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = fname;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
-  }
-  function exportData() {
-    const fname = "base-backup-" + new Date().toISOString().slice(0, 10) + ".json";
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-    try {
-      const file = new File([blob], fname, { type: "application/json" });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({ files: [file], title: "BASE backup" }).then(() => toast("Backup shared")).catch(() => downloadBlob(blob, fname));
-        return;
-      }
-    } catch (e) {}
-    downloadBlob(blob, fname); toast("Backup saved");
-  }
-  function importData(file) {
-    if (!file) return;
-    const r = new FileReader();
-    r.onload = () => {
-      try {
-        const obj = JSON.parse(r.result);
-        if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new Error("bad");
-        S.save(obj); toast("Restored — reloading…");
-        setTimeout(() => location.reload(), 700);
-      } catch (e) { toast("Couldn't read that backup file"); }
-    };
-    r.readAsText(file);
-  }
-  // ask the browser to keep our data through storage pressure / updates
-  if (navigator.storage && navigator.storage.persist) { navigator.storage.persist().catch(() => {}); }
-
-  function wireSheet() {
-    $$("[data-grp]", sheetBody).forEach((el) => {
-      const ev = el.type === "checkbox" ? "change" : "input";
-      el.addEventListener(ev, () => {
-        const arr = grpArray(el.dataset.grp); if (!arr) return;
-        const item = arr.find((x) => x.id === el.dataset.id); if (!item) return;
-        const f = el.dataset.field;
-        let v = el.type === "checkbox" ? el.checked : el.value;
-        if (["amount", "credits", "balance", "limit", "dueDay"].indexOf(f) >= 0) v = el.value === "" ? 0 : +el.value;
-        item[f] = v;
-        persist(); liveRender();
-      });
-    });
-    const tax = $("[data-tax]", sheetBody);
-    if (tax) tax.addEventListener("input", () => { state.budget.taxRate = clamp((+tax.value || 0) / 100, 0, 0.6); persist(); renderBudget(); });
-    $$("[data-acad]", sheetBody).forEach((el) => el.addEventListener("input", () => { state.academics[el.dataset.acad] = +el.value || 0; persist(); renderAcademics(); }));
-    $$("[data-add]", sheetBody).forEach((btn) => btn.addEventListener("click", () => addItem(btn.dataset.add)));
-    $$("[data-del]", sheetBody).forEach((btn) => btn.addEventListener("click", () => {
-      const r = btn.closest(".ed-row"), arr = grpArray(r.dataset.grp);
-      const i = arr.findIndex((x) => x.id === r.dataset.id); if (i >= 0) arr.splice(i, 1);
-      persist(); buildSheet(); liveRender();
-    }));
-  }
-
-  function addItem(grp) {
-    const arr = grpArray(grp); if (!arr) return;
-    const id = S.uid(grp[0]);
-    if (grp === "incomes") arr.push({ id, label: "", amount: 0 });
-    else if (grp === "bills" || grp === "subscriptions") arr.push({ id, label: "", amount: 0, dueDay: 1 });
-    else if (grp === "cards") arr.push({ id, kind: "debit", name: "", balance: 0, limit: 0, dueDay: 1 });
-    else if (grp === "courses") arr.push({ id, code: "", name: "", credits: 3, grade: "", expected: "", term: "", status: "planned" });
-    else if (grp === "assignments") arr.push({ id, title: "", course: "", due: S.isoInDays(7), done: false });
-    persist(); buildSheet(); liveRender();
-  }
-
-  const SHEET_TITLES = { budget: "Edit budget", acad: "Edit courses & assignments", teams: "Edit teams", pdf: "Export to PDF" };
-  function openSheet(kind) {
-    sheetKind = kind;
-    sheetTitle.textContent = SHEET_TITLES[kind] || "Edit";
-    buildSheet();
-    sheet.hidden = false;
-    document.body.classList.add("sheet-open");
-    sheet.scrollTop = 0;
-  }
-  function closeSheet() { sheet.hidden = true; sheetKind = null; document.body.classList.remove("sheet-open"); }
-  if (sheet) {
-    sheet.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) closeSheet(); });
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !sheet.hidden) closeSheet(); });
-    $$("[data-edit]").forEach((btn) => btn.addEventListener("click", () => openSheet(btn.dataset.edit)));
-  }
-
-  // expand/collapse the full dashboards (calm scroll, detail on demand)
-  $$("[data-toggle]").forEach((btn) => btn.addEventListener("click", () => {
-    const el = document.getElementById(btn.dataset.toggle); if (!el) return;
-    const open = el.hidden;
-    el.hidden = !open;
-    btn.classList.toggle("open", open);
-    btn.setAttribute("aria-expanded", open ? "true" : "false");
-    const lbl = btn.querySelector(".tg-label");
-    if (lbl) lbl.textContent = open ? "Show less" : (btn.dataset.label || "View full");
-    if (open) { observeReveals(); onScroll(); }
-  }));
-
-  // tools (wrap-up section): export PDF, back up, restore
-  const btnPdf = $("#btnPdf"), btnBackup = $("#btnBackup"), btnRestore = $("#btnRestore"), fileRestore = $("#fileRestore");
-  if (btnPdf) btnPdf.addEventListener("click", () => openSheet("pdf"));
-  if (btnBackup) btnBackup.addEventListener("click", exportData);
-  if (btnRestore && fileRestore) {
-    btnRestore.addEventListener("click", () => fileRestore.click());
-    fileRestore.addEventListener("change", () => { importData(fileRestore.files[0]); fileRestore.value = ""; });
   }
 
   // ---------- WEATHER ----------
@@ -943,7 +405,7 @@ ${items}
 
   // ===================== RENDER ALL =====================
   renderHeader(); renderPreview(); renderCountdown(); renderTodayCard();
-  renderTasks(); renderHabits(); renderNotes(); renderWeek(); renderBudget(); renderAcademics();
+  renderTasks(); renderHabits(); renderNotes(); renderWeek(); renderBudget(); renderSchool();
   loadWeather(); renderScores();
 
   // ===================== DOT NAV =====================
@@ -1007,39 +469,14 @@ ${items}
   function frame() { updateHero(); updateNotes(); updateNav(); updateDots(); ticking = false; }
   function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(frame); } }
 
-  // reveal-on-scroll: observe any not-yet-shown .reveal (incl. dynamically added)
-  function observeReveals() {
-    $$(".reveal").forEach((el) => {
-      if (el.dataset.shown) return;
-      el.dataset.shown = "1";
-      if (reduce) { el.classList.add("in"); animateCounts(el); }
-      else io.observe(el);
-    });
-  }
-  // count-up numbers when revealed — GSAP if present, otherwise just set them
-  function animateCounts(root) {
-    if (!root || !root.querySelectorAll) return;
-    root.querySelectorAll("[data-count]").forEach((el) => {
-      if (el.dataset.counted) return;
-      const target = parseFloat(el.dataset.count);
-      if (!isFinite(target)) return;
-      el.dataset.counted = "1";
-      if (reduce || !window.gsap) { el.textContent = String(Math.round(target)); return; }
-      const o = { v: 0 };
-      window.gsap.to(o, { v: target, duration: 1.3, ease: "power2.out", onUpdate: () => { el.textContent = String(Math.round(o.v)); } });
-    });
-  }
-
-  const io = new IntersectionObserver((es) => es.forEach((e) => {
-    if (e.isIntersecting) { e.target.classList.add("in"); animateCounts(e.target); io.unobserve(e.target); }
-  }), { threshold: 0.18 });
+  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) e.target.classList.add("in"); }), { threshold: 0.18 });
+  $$(".reveal").forEach((el) => io.observe(el));
 
   if (!reduce) {
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll, { passive: true });
     frame();
-  } else { updateDots(); }
-  observeReveals();
+  } else { $$(".reveal").forEach((el) => el.classList.add("in")); updateDots(); }
 
   $$('a[href^="#"]').forEach((a) => a.addEventListener("click", (e) => {
     const id = a.getAttribute("href"); if (id.length < 2) return;

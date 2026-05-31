@@ -21,6 +21,34 @@
     return Math.round((target - t) / 86400000);
   }
 
+  // ---- GPA / grade scale (standard US 4.0) ----
+  const GRADES = [
+    ["A", 4.0], ["A-", 3.7], ["B+", 3.3], ["B", 3.0], ["B-", 2.7],
+    ["C+", 2.3], ["C", 2.0], ["C-", 1.7], ["D+", 1.3], ["D", 1.0], ["D-", 0.7], ["F", 0.0],
+  ];
+  function gradePoints(letter) { const f = GRADES.find((g) => g[0] === letter); return f ? f[1] : null; }
+  function gpaLetter(p) {
+    if (p == null || isNaN(p)) return "—";
+    let best = GRADES[GRADES.length - 1];
+    for (const g of GRADES) { if (p >= g[1] - 0.001) { best = g; break; } }
+    return best[0];
+  }
+  // days until the next occurrence of a day-of-month (1-31)
+  function daysUntilDom(dom) {
+    if (!dom) return null;
+    const now = new Date(); const today = now.getDate();
+    const y = now.getFullYear(), m = now.getMonth();
+    const dim = new Date(y, m + 1, 0).getDate();
+    let target = Math.min(dom, dim);
+    if (target >= today) return target - today;
+    const nextDim = new Date(y, m + 2, 0).getDate();
+    return (dim - today) + Math.min(dom, nextDim);
+  }
+  function ordinal(n) {
+    const s = ["th", "st", "nd", "rd"], v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  }
+
   const SEED = {
     profile: {
       name: "Antonio",
@@ -73,33 +101,18 @@
     ],
     // monthly budget — student with two jobs
     budget: {
-      // effective tax rate used to estimate take-home (editable)
-      taxRate: 0.16,
-      // monthly gross income sources
       incomes: [
         { id: "i1", label: "Cafe job", amount: 900 },
         { id: "i2", label: "Library desk", amount: 560 },
       ],
-      // recurring bills — dueDay is day-of-month (0 = no fixed date)
-      bills: [
-        { id: "b1", label: "Rent + utilities", amount: 650, dueDay: 1 },
-        { id: "b2", label: "Phone", amount: 45, dueDay: 12 },
-        { id: "b3", label: "Transit pass", amount: 55, dueDay: 5 },
-        { id: "b4", label: "Internet", amount: 25, dueDay: 20 },
-      ],
-      // recurring subscriptions — also dated
-      subscriptions: [
-        { id: "s1", label: "Gym membership", amount: 30, dueDay: 15 },
-        { id: "s2", label: "Spotify", amount: 11, dueDay: 8 },
-        { id: "s3", label: "iCloud", amount: 3, dueDay: 22 },
-        { id: "s4", label: "Streaming", amount: 16, dueDay: 19 },
-      ],
-      // cards: kind "credit" (balance owed, has limit + due date) or "debit" (cash on hand)
-      cards: [
-        { id: "c1", kind: "credit", name: "Student Visa", balance: 420, limit: 1500, dueDay: 18 },
-        { id: "c2", kind: "credit", name: "Store card", balance: 95, limit: 500, dueDay: 25 },
-        { id: "c3", kind: "debit", name: "Checking", balance: 1240 },
-        { id: "c4", kind: "debit", name: "Savings", balance: 2100 },
+      expenses: [
+        { id: "x1", label: "Rent + utilities", amount: 650, cat: "needs" },
+        { id: "x2", label: "Groceries", amount: 240, cat: "needs" },
+        { id: "x3", label: "Phone + transit", amount: 95, cat: "needs" },
+        { id: "x4", label: "Textbooks (saved)", amount: 60, cat: "goals" },
+        { id: "x5", label: "Gym membership", amount: 30, cat: "wants" },
+        { id: "x6", label: "Eating out + fun", amount: 130, cat: "wants" },
+        { id: "x7", label: "Vegas fund", amount: 100, cat: "goals" },
       ],
       // past monthly snapshots (most recent last); current month is computed live
       history: [
@@ -109,34 +122,60 @@
         { month: "2026-03", income: 1460, spend: 1300 },
         { month: "2026-04", income: 1500, spend: 1285 },
       ],
-    },
-    // academics — GPA + degree progress + assignments (Computer Engineering)
-    academics: {
-      requiredCredits: 128,   // credits to graduate
-      priorCredits: 0,        // transfer / AP credits already earned
-      priorGpa: 0,            // GPA attached to those prior credits
-      // status: "completed" (uses grade) | "in-progress" | "planned" (use expected)
-      courses: [
-        { id: "co1", code: "MATH 141", name: "Calculus I", credits: 4, grade: "A-", expected: "", term: "Fall 2025", status: "completed" },
-        { id: "co2", code: "ENGL 101", name: "Composition", credits: 3, grade: "B+", expected: "", term: "Fall 2025", status: "completed" },
-        { id: "co3", code: "CMPE 101", name: "Intro to Computer Eng", credits: 3, grade: "A", expected: "", term: "Fall 2025", status: "completed" },
-        { id: "co4", code: "PHYS 121", name: "Physics I — Mechanics", credits: 4, grade: "B", expected: "", term: "Fall 2025", status: "completed" },
-        { id: "co5", code: "MATH 142", name: "Calculus II", credits: 4, grade: "", expected: "A-", term: "Spring 2026", status: "in-progress" },
-        { id: "co6", code: "CMPE 200", name: "Digital Logic", credits: 3, grade: "", expected: "B+", term: "Spring 2026", status: "in-progress" },
-        { id: "co7", code: "CS 201", name: "Data Structures", credits: 3, grade: "", expected: "A-", term: "Spring 2026", status: "in-progress" },
-        { id: "co8", code: "PHYS 122", name: "Physics II — E&M", credits: 4, grade: "", expected: "B", term: "Spring 2026", status: "in-progress" },
-        { id: "co9", code: "CMPE 300", name: "Microprocessors", credits: 3, grade: "", expected: "B+", term: "Fall 2026", status: "planned" },
-        { id: "co10", code: "CS 202", name: "Algorithms", credits: 3, grade: "", expected: "A-", term: "Fall 2026", status: "planned" },
-        { id: "co11", code: "MATH 241", name: "Calculus III", credits: 4, grade: "", expected: "B", term: "Fall 2026", status: "planned" },
-        { id: "co12", code: "EE 201", name: "Circuits I", credits: 4, grade: "", expected: "B+", term: "Fall 2026", status: "planned" },
+      // effective tax rate applied to gross income for the after-tax calc
+      taxRate: 0.12,
+      // credit + debit cards. due = day of month (credit only)
+      accounts: [
+        { id: "a1", label: "Visa Student", type: "credit", balance: 420, limit: 1500, due: 15 },
+        { id: "a2", label: "Amex Blue", type: "credit", balance: 180, limit: 1000, due: 2 },
+        { id: "a3", label: "Checking", type: "debit", balance: 1240, due: null },
+        { id: "a4", label: "Savings", type: "debit", balance: 3100, due: null },
       ],
-      // upcoming assignments / academic tasks — due is an ISO date
+      // recurring bills. due = day of month
+      bills: [
+        { id: "b1", label: "Rent + utilities", amount: 650, due: 1 },
+        { id: "b2", label: "Phone", amount: 55, due: 22 },
+        { id: "b3", label: "Internet", amount: 40, due: 12 },
+        { id: "b4", label: "Transit pass", amount: 65, due: 5 },
+      ],
+      // subscriptions. cycle = monthly | yearly
+      subscriptions: [
+        { id: "s1", label: "Spotify", amount: 11, cycle: "monthly", due: 8 },
+        { id: "s2", label: "Netflix", amount: 15, cycle: "monthly", due: 20 },
+        { id: "s3", label: "iCloud+", amount: 3, cycle: "monthly", due: 5 },
+        { id: "s4", label: "Amazon Prime", amount: 139, cycle: "yearly", due: 14 },
+        { id: "s5", label: "GitHub Pro", amount: 4, cycle: "monthly", due: 28 },
+      ],
+    },
+    // school / GPA calculator
+    school: {
+      creditsNeeded: 128,   // total to graduate
+      targetGpa: 3.6,
+      creditsPerSem: 15,    // planning pace
+      completed: [
+        { id: "c1", name: "Calculus I", credits: 4, grade: "A-" },
+        { id: "c2", name: "Calculus II", credits: 4, grade: "B+" },
+        { id: "c3", name: "Intro to Programming", credits: 3, grade: "A" },
+        { id: "c4", name: "Physics I: Mechanics", credits: 4, grade: "B+" },
+        { id: "c5", name: "English Composition", credits: 3, grade: "A-" },
+        { id: "c6", name: "Digital Logic Design", credits: 3, grade: "A" },
+        { id: "c7", name: "General Chemistry", credits: 4, grade: "B" },
+      ],
+      // future classes with expected grades — drives the projection
+      planned: [
+        { id: "p1", name: "Data Structures", credits: 3, grade: "A-" },
+        { id: "p2", name: "Calculus III", credits: 4, grade: "B+" },
+        { id: "p3", name: "Circuits I", credits: 3, grade: "B+" },
+        { id: "p4", name: "Computer Organization", credits: 3, grade: "A-" },
+        { id: "p5", name: "Technical Writing", credits: 3, grade: "A" },
+      ],
+      // upcoming coursework. due = ISO date
       assignments: [
-        { id: "as1", title: "Digital Logic lab report", course: "CMPE 200", due: isoInDays(1), done: false },
-        { id: "as2", title: "Data Structures final project", course: "CS 201", due: isoInDays(2), done: false },
-        { id: "as3", title: "Physics II problem set 12", course: "PHYS 122", due: isoInDays(3), done: false },
-        { id: "as4", title: "Calculus II final exam", course: "MATH 142", due: isoInDays(5), done: false },
-        { id: "as5", title: "Fall course registration", course: "", due: isoInDays(7), done: false },
+        { id: "as1", title: "Data Structures — PS2", course: "Data Structures", due: isoInDays(1), done: false },
+        { id: "as2", title: "Calc III quiz", course: "Calculus III", due: isoInDays(2), done: false },
+        { id: "as3", title: "Circuits lab report", course: "Circuits I", due: isoInDays(4), done: false },
+        { id: "as4", title: "Tech Writing draft", course: "Technical Writing", due: isoInDays(6), done: false },
+        { id: "as5", title: "Computer Org midterm", course: "Computer Organization", due: isoInDays(9), done: false },
       ],
     },
   };
@@ -151,18 +190,45 @@
     const merged = Object.assign(base, saved);
     // keep profile defaults if an older save lacks fields
     merged.profile = Object.assign({}, base.profile, saved.profile || {});
-    // deep-ish merge budget so seeded history / new fields survive older saves
+    // deep-ish merge budget so seeded history survives older saves
     merged.budget = Object.assign({}, base.budget, saved.budget || {});
     if (!merged.budget.history || !merged.budget.history.length) merged.budget.history = clone(base.budget.history);
-    merged.academics = Object.assign({}, base.academics, saved.academics || {});
+    if (merged.budget.taxRate == null) merged.budget.taxRate = base.budget.taxRate;
+    if (!merged.budget.accounts) merged.budget.accounts = clone(base.budget.accounts);
+    if (!merged.budget.bills) merged.budget.bills = clone(base.budget.bills);
+    if (!merged.budget.subscriptions) merged.budget.subscriptions = clone(base.budget.subscriptions);
+    // school
+    merged.school = Object.assign({}, base.school, saved.school || {});
+    if (!merged.school.assignments) merged.school.assignments = clone(base.school.assignments);
     return merged;
   }
 
   function save(state) {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+    try { if (state) localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
   }
   function reset() { try { localStorage.removeItem(KEY); } catch (e) {} }
   function uid(prefix) { return (prefix || "x") + Math.random().toString(36).slice(2, 9); }
+
+  // ---- backup / restore ----
+  const EXPORT_VERSION = 1;
+  function exportData() {
+    const data = load();
+    return JSON.stringify({ app: "BASE", version: EXPORT_VERSION, exportedAt: new Date().toISOString(), data }, null, 2);
+  }
+  // accepts either a wrapped backup ({app,version,data}) or a raw state object
+  function importData(str) {
+    let parsed;
+    try { parsed = JSON.parse(str); } catch (e) { return { ok: false, error: "That file isn't valid JSON." }; }
+    const data = parsed && parsed.data ? parsed.data : parsed;
+    if (!data || typeof data !== "object" || (!data.tasks && !data.budget && !data.school && !data.profile)) {
+      return { ok: false, error: "This doesn't look like a BASE backup." };
+    }
+    try { localStorage.setItem(KEY, JSON.stringify(data)); return { ok: true }; }
+    catch (e) { return { ok: false, error: "Couldn't save — storage may be full." }; }
+  }
+  function storageBytes() {
+    try { const s = localStorage.getItem(KEY); return s ? new Blob([s]).size : 0; } catch (e) { return 0; }
+  }
 
   // Monday-indexed weekday (Mon=0 ... Sun=6)
   function todayIdx() { return (new Date().getDay() + 6) % 7; }
@@ -188,38 +254,10 @@
     return "Winding down";
   }
 
-  // ---------- GPA (4.0 scale, +/- aware) ----------
-  const GRADE_POINTS = {
-    "A+": 4.0, "A": 4.0, "A-": 3.7, "B+": 3.3, "B": 3.0, "B-": 2.7,
-    "C+": 2.3, "C": 2.0, "C-": 1.7, "D+": 1.3, "D": 1.0, "D-": 0.7, "F": 0.0,
-  };
-  const GRADE_LIST = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"];
-  function gradePoints(g) { return Object.prototype.hasOwnProperty.call(GRADE_POINTS, g) ? GRADE_POINTS[g] : null; }
-
-  // ---------- DUE DATES ----------
-  // next calendar date a given day-of-month (1..31) falls on, today or later. 0 => null
-  function nextDueDate(dueDay) {
-    dueDay = +dueDay;
-    if (!dueDay || dueDay < 1) return null;
-    const now = new Date(); now.setHours(0, 0, 0, 0);
-    const y = now.getFullYear(), m = now.getMonth();
-    function clampDay(year, month, day) {
-      const last = new Date(year, month + 1, 0).getDate();
-      return new Date(year, month, Math.min(day, last));
-    }
-    let d = clampDay(y, m, dueDay);
-    if (d < now) d = clampDay(y, m + 1, dueDay);
-    return d;
-  }
-  function daysUntilDate(d) {
-    if (!d) return null;
-    const t = new Date(); t.setHours(0, 0, 0, 0);
-    return Math.round((d - t) / 86400000);
-  }
-
   window.Store = {
     KEY, DAYS, DAYS_FULL, SEED, load, save, reset, clone, uid,
     todayIdx, isWeekend, formatDate, greeting, isoInDays, daysUntil, isoMonth, monthLabel,
-    GRADE_POINTS, GRADE_LIST, gradePoints, nextDueDate, daysUntilDate,
+    GRADES, gradePoints, gpaLetter, daysUntilDom, ordinal,
+    exportData, importData, storageBytes, EXPORT_VERSION,
   };
 })();

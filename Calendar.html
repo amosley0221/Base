@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BASE — Calendar</title>
+<script>try{if(localStorage.getItem('base_theme')==='dark')document.documentElement.classList.add('mode-dark');}catch(e){}</script>
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#E8281E" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="BASE" />
+<link rel="apple-touch-icon" href="icons/base-180.png" />
+<link rel="icon" href="icons/base-32.png" />
+<link rel="stylesheet" href="app.css" />
+<style>
+  .cal-form { display: grid; grid-template-columns: auto 1fr auto auto auto; gap: 12px; align-items: end; }
+  @media (max-width: 760px) { .cal-form { grid-template-columns: 1fr 1fr; } .cal-form .grow-col { grid-column: 1 / -1; } }
+  .week-cols { display: grid; grid-template-columns: repeat(7, minmax(150px, 1fr)); gap: 12px; }
+  .week-cols.scroll { overflow-x: auto; padding-bottom: 8px; }
+  .col { background: var(--white); border: 1px solid var(--edge-soft); border-radius: 16px; padding: 14px; min-height: 220px; }
+  .col.today { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-wash); }
+  .col .col-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+  .col .col-h .dname { font-weight: 700; letter-spacing: -0.01em; }
+  .col.today .col-h .dname { color: var(--red); }
+  .col .col-h .cn { font-size: 12px; color: var(--ink-faint); }
+  .ev { border-left: 3px solid var(--edge); padding: 8px 10px; border-radius: 8px; background: var(--paper); margin-bottom: 9px; position: relative; }
+  .ev[data-cat="school"]   { border-color: var(--school); }
+  .ev[data-cat="work"]     { border-color: var(--work); }
+  .ev[data-cat="move"]     { border-color: var(--move); }
+  .ev[data-cat="personal"] { border-color: var(--personal); }
+  .ev .et { font-family: var(--mono); font-size: 11px; color: var(--ink-soft); letter-spacing: 0.04em; }
+  .ev .ev-title { font-size: 14px; margin-top: 2px; padding-right: 16px; }
+  .ev .del { position: absolute; top: 4px; right: 4px; font-size: 15px; opacity: 0; }
+  .ev:hover .del { opacity: 1; }
+  .col .empty { color: var(--ink-faint); font-size: 13px; padding: 6px 0; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 18px; font-size: 13px; color: var(--ink-soft); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header class="nav nav--solid" id="nav">
+  <a class="nav-brand" href="Home.html"><span class="glyph"></span>BASE</a>
+  <div class="nav-right">
+    <a class="theme-toggle" href="Settings.html" data-cursor aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </a>
+    <button class="theme-toggle" data-theme-toggle data-cursor aria-label="Toggle dark mode">
+      <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+      <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg>
+    </button>
+  </div>
+</header>
+
+<a class="back-home" href="Home.html" data-cursor>← Home</a>
+
+<main class="editor">
+  <div class="editor-head">
+    <div class="eyebrow">Calendar</div>
+    <h1>Your week.</h1>
+    <p>Classes, both jobs, and workouts in one view. Add anything and it appears on Home under “The week ahead.”</p>
+  </div>
+
+  <section class="card panel">
+    <div class="panel-title"><h2>Add to the week</h2></div>
+    <div class="cal-form">
+      <div><label class="label">Day</label><select class="field" id="fDay"></select></div>
+      <div class="grow-col"><label class="label">What is it?</label><input class="field" id="fTitle" placeholder="e.g. Stats lecture" /></div>
+      <div><label class="label">Time</label><input class="field" id="fTime" type="time" value="09:00" /></div>
+      <div><label class="label">Type</label>
+        <select class="field" id="fCat">
+          <option value="school">School</option>
+          <option value="work">Work</option>
+          <option value="move">Workout</option>
+          <option value="personal">Personal</option>
+        </select>
+      </div>
+      <div><button class="btn btn--red" id="addEvent">Add</button></div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--school)"></i>School</span>
+      <span><i style="background:var(--work)"></i>Work</span>
+      <span><i style="background:var(--move)"></i>Workout</span>
+      <span><i style="background:var(--personal)"></i>Personal</span>
+    </div>
+  </section>
+
+  <div class="week-cols scroll" id="weekCols"></div>
+
+  <section class="card panel" style="margin-top:26px">
+    <div class="panel-title"><h2>Countdowns</h2><span class="hint">the nearest one headlines your Home page</span></div>
+    <div id="msList"></div>
+    <div class="add-row" style="flex-wrap:wrap">
+      <input class="field" id="msTitle" placeholder="What are you counting down to? (e.g. Vegas trip)" style="flex:1;min-width:180px" />
+      <input class="field" id="msDate" type="date" style="flex:0 0 170px" />
+      <button class="btn btn--red" id="addMs">Add</button>
+    </div>
+  </section>
+</main>
+
+<script src="store.js"></script>
+<script src="ui.js"></script>
+<script src="calendar.js"></script>
+<script src="theme.js"></script>
+<script src="cursor.js"></script>
+<script src="pwa.js"></script>
+</body>
+</html>

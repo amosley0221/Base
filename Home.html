@@ -4,27 +4,17 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BASE — Your homebase</title>
-<meta name="description" content="A calm personal homebase — today's tasks, habits, notes, your week, scores and budget, all in one scroll." />
 <script>try{if(localStorage.getItem('base_theme')==='dark')document.documentElement.classList.add('mode-dark');}catch(e){}</script>
-
-<!-- PWA: installable on phone / desktop -->
 <link rel="manifest" href="manifest.webmanifest" />
-<meta name="theme-color" content="#FBFAF8" media="(prefers-color-scheme: light)" />
-<meta name="theme-color" content="#0E0F0B" media="(prefers-color-scheme: dark)" />
-<meta name="mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#E8281E" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="BASE" />
-<link rel="apple-touch-icon" href="icon-180.png" />
-<link rel="icon" href="favicon.svg" type="image/svg+xml" />
-<link rel="icon" href="icon-32.png" sizes="32x32" type="image/png" />
-
+<link rel="apple-touch-icon" href="icons/base-180.png" />
+<link rel="icon" href="icons/base-32.png" />
 <link rel="stylesheet" href="app.css" />
 <link rel="stylesheet" href="home.css" />
-
-<!-- Count-up animation polish (progressive enhancement; the section fully
-     works without it via CSS + IntersectionObserver fallbacks). -->
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 </head>
 <body>
 
@@ -33,6 +23,9 @@
 <header class="nav" id="nav">
   <a class="nav-brand" href="Home.html"><span class="glyph"></span>BASE</a>
   <div class="nav-right">
+    <a class="theme-toggle" href="Settings.html" data-cursor aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </a>
     <button class="theme-toggle" data-theme-toggle data-cursor aria-label="Toggle dark mode">
       <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
       <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg>
@@ -147,121 +140,63 @@
     </div>
   </section>
 
-  <!-- ============ ACADEMICS / GPA ============ -->
-  <section class="acad-wrap" data-nav data-theme="on-light" data-label="Academics" data-screen-label="GPA">
+  <!-- ============ SCHOOL ============ -->
+  <section class="school-wrap" data-nav data-theme="on-light" data-label="School" data-href="School.html" data-screen-label="School">
     <div class="sec">
       <div class="sec-head reveal">
         <div class="eyebrow">School</div>
-        <h2>Where you stand.</h2>
-        <p class="lede">Your GPA, where it's headed with this term's grades, and the credits between you and the degree.</p>
-        <button class="sec-edit" type="button" data-edit="acad" data-cursor>Edit courses</button>
+        <h2>GPA &amp; what's due.</h2>
+        <p class="lede">Where you stand this semester, and the assignments coming up — tap through for the full calculator.</p>
       </div>
-
-      <div class="sec-summary reveal d1" id="acadSummary"></div>
-      <button class="sec-toggle reveal" type="button" data-toggle="acadDetail" aria-expanded="false" data-label="View full academics" data-cursor><span class="tg-label">View full academics</span><span class="tg-ic" aria-hidden="true">↓</span></button>
-
-      <div class="sec-detail" id="acadDetail" hidden>
-        <div class="acad-top reveal d1">
-          <div class="gpa-card">
-            <div class="gpa-block"><div class="n" id="gpaNow">0.00</div><div class="k">current GPA</div></div>
-            <div class="gpa-arrow" aria-hidden="true">→</div>
-            <div class="gpa-block"><div class="n" id="gpaProj">0.00</div><div class="k">projected</div></div>
-          </div>
-          <div class="cred-card">
-            <div class="ring ring--sm">
-              <svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="54"></circle><circle class="fill" id="credFill" cx="60" cy="60" r="54"></circle></svg>
-              <div class="center"><div><div class="n" id="credPct">0%</div><div class="k">to degree</div></div></div>
-            </div>
-            <div class="cred-meta" id="credMeta"></div>
-          </div>
+      <div class="school-dash reveal d1">
+        <div class="sch-gpa">
+          <div class="sg-dial" id="sgDial"></div>
+          <div class="sg-stats" id="sgStats"></div>
         </div>
-
-        <div class="acad-tiles reveal d2" id="acadTiles"></div>
-
-        <div class="acad-cols reveal d3">
-          <div class="acad-assign">
-            <h3 class="fin-sub">Upcoming assignments</h3>
-            <div id="acadAssign"></div>
-          </div>
-          <div class="acad-terms">
-            <h3 class="fin-sub">By semester</h3>
-            <div id="acadTerms"></div>
-          </div>
+        <div class="sch-asgn">
+          <div class="sa-head">Upcoming assignments</div>
+          <div id="sgAsgn"></div>
         </div>
       </div>
     </div>
   </section>
 
   <!-- ============ SCOREBOARD ============ -->
-  <section class="scores-wrap" data-nav data-theme="on-light" data-label="Scoreboard" data-screen-label="Scores">
+  <section class="scores-wrap" data-nav data-theme="on-light" data-label="Scoreboard" data-href="Scoreboard.html" data-screen-label="Scores">
     <div class="sec">
       <div class="sec-head reveal">
         <div class="eyebrow">Your teams</div>
         <h2>The scoreboard.</h2>
         <p class="lede">Live scores and what's next — so you never miss a game on a study night.</p>
-        <button class="sec-edit" type="button" data-edit="teams" data-cursor>Edit teams</button>
       </div>
       <div class="score-grid reveal d1" id="scoreGrid"></div>
-
-      <!-- featured matchup (summary; always visible) -->
-      <div class="gc" id="gameHero"></div>
-
-      <button class="sec-toggle reveal" type="button" data-toggle="scoreDetail" aria-expanded="false" data-label="Full game center &amp; news" data-cursor><span class="tg-label">Full game center &amp; news</span><span class="tg-ic" aria-hidden="true">↓</span></button>
-
-      <div class="sec-detail" id="scoreDetail" hidden>
-        <!-- box score, head-to-head, momentum, leaders -->
-        <div class="gc" id="gameDetail"></div>
-
-        <!-- breaking news & insider posts -->
-        <div class="news-head reveal" id="newsHead" hidden>
-          <div class="eyebrow">Around the league</div>
-          <h3>Breaking &amp; latest</h3>
-        </div>
-        <div class="news-feed" id="newsFeed"></div>
-      </div>
     </div>
   </section>
 
   <!-- ============ BUDGET ============ -->
-  <section class="budget-wrap" data-nav data-theme="on-light" data-label="Budget" data-screen-label="Budget">
+  <section class="budget-wrap" data-nav data-theme="on-light" data-label="Budget" data-href="Budget.html" data-screen-label="Budget">
     <div class="sec">
       <div class="sec-head reveal">
         <div class="eyebrow">Money</div>
-        <h2>Your money, in one place.</h2>
-        <p class="lede">Cash on hand, income before and after taxes, and every bill, sub and card — with what's due next.</p>
-        <button class="sec-edit" type="button" data-edit="budget" data-cursor>Edit budget</button>
+        <h2>What's left this month.</h2>
+        <p class="lede">Two jobs in, the essentials out — and what stays for Vegas and everything else.</p>
       </div>
-
-      <div class="sec-summary reveal d1" id="budgetSummary"></div>
-      <button class="sec-toggle reveal" type="button" data-toggle="budgetDetail" aria-expanded="false" data-label="View full budget" data-cursor><span class="tg-label">View full budget</span><span class="tg-ic" aria-hidden="true">↓</span></button>
-
-      <div class="sec-detail" id="budgetDetail" hidden>
-        <div class="fin-tiles reveal d1" id="finTiles"></div>
-
-        <div class="budget-dash reveal d2">
-          <div class="bd-left">
-            <div class="bd-leftover">
-              <div class="bd-amount" id="bdLeft">$0</div>
-              <div class="bd-cap">left each month after taxes &amp; bills</div>
-            </div>
-            <div class="bd-spark" id="bdSpark"></div>
-            <div class="bd-bar" id="bdBar"></div>
-            <div class="bd-io">
-              <div><span class="bd-k">Take-home / mo</span><span class="bd-v" id="bdIn">$0</span></div>
-              <div><span class="bd-k">Out / mo</span><span class="bd-v" id="bdOut">$0</span></div>
-            </div>
+      <div class="budget-dash reveal d1">
+        <div class="bd-left">
+          <div class="bd-leftover">
+            <div class="bd-amount" id="bdLeft">$0</div>
+            <div class="bd-cap">left to spend / save</div>
           </div>
-          <div class="bd-right">
-            <div class="bd-due-head"><h3 class="fin-sub">Upcoming bills</h3><span class="bd-due-total" id="bdDueTotal"></span></div>
-            <div id="bdDue"></div>
+          <div class="bd-spark" id="bdSpark"></div>
+          <div class="bd-bar" id="bdBar"></div>
+          <div class="bd-io">
+            <div><span class="bd-k">In</span><span class="bd-v" id="bdIn">$0</span></div>
+            <div><span class="bd-k">Out</span><span class="bd-v" id="bdOut">$0</span></div>
           </div>
         </div>
-
-        <div class="fin-cards reveal d3">
-          <h3 class="fin-sub">Cards &amp; accounts</h3>
-          <div class="card-grid" id="bdCards"></div>
-        </div>
+        <div class="bd-right" id="bdCats"></div>
       </div>
+      <div class="bd-strip reveal d2" id="bdStrip"></div>
     </div>
   </section>
 
@@ -271,12 +206,9 @@
       <h2 class="reveal">That's the plan.</h2>
       <p class="reveal">You don't have to do it all at once. Pick the next thing, and let the rest stay where it is.</p>
       <div class="actions reveal">
-        <button class="btn btn--light" type="button" id="btnPdf" data-cursor>Export to PDF</button>
-        <button class="btn btn--ghost" type="button" id="btnBackup" data-cursor style="color:#fff;border-color:rgba(255,255,255,0.5)">Back up to file</button>
-        <button class="btn btn--ghost" type="button" id="btnRestore" data-cursor style="color:#fff;border-color:rgba(255,255,255,0.5)">Restore</button>
-        <input type="file" id="fileRestore" accept="application/json,.json" hidden />
+        <a class="btn btn--light" href="Plan.html">Adjust today's plan</a>
+        <a class="btn btn--ghost" href="Calendar.html" style="color:#fff;border-color:rgba(255,255,255,0.5)">See the week</a>
       </div>
-      <p class="reveal tools-note">Everything saves on this device. Back up to a file you can keep on your phone — then Restore it after reinstalling or on a new device.</p>
     </div>
     <div class="h-foot">
       <div class="fb">BASE</div>
@@ -291,32 +223,11 @@
 
 </main>
 
-<!-- editor sheet (budget / courses) -->
-<div class="sheet" id="sheet" hidden>
-  <div class="sheet-scrim" data-close></div>
-  <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
-    <div class="sheet-head">
-      <h3 id="sheetTitle">Edit</h3>
-      <button class="sheet-x" type="button" data-close aria-label="Close" data-cursor>&times;</button>
-    </div>
-    <div class="sheet-body" id="sheetBody"></div>
-  </div>
-</div>
-
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
-
 <script src="store.js"></script>
 <script src="sports.js"></script>
 <script src="home.js"></script>
 <script src="theme.js"></script>
 <script src="cursor.js"></script>
-<script>
-  // Register the service worker so BASE installs and works offline.
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("sw.js").catch(() => {});
-    });
-  }
-</script>
+<script src="pwa.js"></script>
 </body>
 </html>

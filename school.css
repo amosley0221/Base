@@ -1,0 +1,85 @@
+/* ===========================================================
+   BASE — School / GPA calculator
+   =========================================================== */
+.gpa-hero { display: grid; grid-template-columns: 260px 1fr; gap: clamp(24px, 4vw, 52px); align-items: center; margin-bottom: 34px; }
+@media (max-width: 720px) { .gpa-hero { grid-template-columns: 1fr; } }
+
+/* GPA dial */
+.dial { position: relative; width: 100%; max-width: 260px; aspect-ratio: 1; margin: 0 auto; }
+.dial svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.dial .track { fill: none; stroke: var(--edge); stroke-width: 12; }
+.dial .fill { fill: none; stroke: var(--red); stroke-width: 12; stroke-linecap: round; transition: stroke-dashoffset 0.8s var(--ease); }
+.dial .proj { fill: none; stroke: var(--move); stroke-width: 4; stroke-linecap: round; opacity: 0.85; }
+.dial .center { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+.dial .center .g { font-size: 3.2rem; font-weight: 700; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.dial .center .lt { font-size: 1.1rem; font-weight: 600; color: var(--red); margin-top: 2px; }
+.dial .center .of { font-size: 12px; color: var(--ink-soft); letter-spacing: 0.06em; margin-top: 4px; }
+
+.gpa-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+@media (max-width: 460px) { .gpa-stats { grid-template-columns: 1fr; } }
+.gpa-stat { background: var(--paper); border: 1px solid var(--edge-soft); border-radius: 16px; padding: 20px; }
+.gpa-stat .n { font-size: 1.9rem; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.gpa-stat .n.proj { color: var(--move); }
+.gpa-stat .n .u { font-size: 0.85rem; color: var(--ink-faint); font-weight: 400; margin-left: 3px; }
+.gpa-stat .k { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); margin-top: 6px; }
+.gpa-stat .sub { font-size: 12.5px; color: var(--ink-faint); margin-top: 4px; }
+
+/* progress to degree */
+.degree { margin-bottom: 26px; }
+.degree .deg-bar { height: 16px; border-radius: 100px; background: var(--paper-2); overflow: hidden; display: flex; }
+.degree .deg-bar i { height: 100%; display: block; }
+.degree .deg-bar i.done { background: var(--red); }
+.degree .deg-bar i.plan { background: color-mix(in oklab, var(--move) 55%, transparent); }
+.degree .deg-meta { display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-top: 12px; font-size: 13px; color: var(--ink-soft); }
+.degree .deg-meta b { color: var(--ink); font-weight: 600; }
+
+/* course rows */
+.course-row { display: flex; align-items: center; gap: 12px; padding: 11px 2px; border-bottom: 1px solid var(--edge-soft); }
+.course-row:last-of-type { border-bottom: none; }
+.course-row .cname { flex: 1; min-width: 0; font-size: 15px; }
+.course-row .ccred { font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums; width: 56px; text-align: right; flex: 0 0 auto; }
+.grade-pill {
+  flex: 0 0 auto; min-width: 42px; text-align: center; font-weight: 700; font-size: 13px;
+  padding: 5px 8px; border-radius: 8px; border: 1px solid var(--edge);
+  font-variant-numeric: tabular-nums; cursor: pointer; background: var(--white); color: var(--ink);
+}
+.grade-pill[data-tier="a"] { color: var(--move); border-color: color-mix(in oklab, var(--move) 40%, var(--edge)); }
+.grade-pill[data-tier="b"] { color: var(--ink); }
+.grade-pill[data-tier="c"] { color: var(--personal); border-color: color-mix(in oklab, var(--personal) 40%, var(--edge)); }
+.grade-pill[data-tier="d"], .grade-pill[data-tier="f"] { color: var(--red); border-color: color-mix(in oklab, var(--red) 40%, var(--edge)); }
+
+.add-course { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.add-course .cn-in { flex: 1; min-width: 150px; }
+.add-course .cr-in { flex: 0 0 84px; }
+.add-course .gr-in { flex: 0 0 92px; }
+
+/* pace planner */
+.pace-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+@media (max-width: 640px) { .pace-grid { grid-template-columns: 1fr; } }
+.pace-controls .pace-field { margin-bottom: 18px; }
+.pace-field .label { display: flex; justify-content: space-between; }
+.pace-field .label .val { color: var(--red); font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 13px; }
+input[type="range"].slider { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 100px; background: var(--paper-2); outline: none; }
+input[type="range"].slider::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--red); cursor: pointer; border: 3px solid var(--white); box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+input[type="range"].slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--red); cursor: pointer; border: 3px solid var(--white); }
+.pace-out { background: var(--paper); border: 1px solid var(--edge-soft); border-radius: 16px; padding: 22px; }
+.pace-out .po-row { display: flex; align-items: baseline; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--edge-soft); }
+.pace-out .po-row:last-child { border-bottom: none; }
+.pace-out .po-k { font-size: 14px; color: var(--ink-soft); }
+.pace-out .po-v { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.pace-out .po-v.good { color: var(--move); }
+.pace-out .po-v.warn { color: var(--red); }
+.target-note { font-size: 13.5px; line-height: 1.5; color: var(--ink-soft); margin-top: 14px; padding: 14px 16px; background: var(--red-wash); border-radius: 12px; }
+.target-note b { color: var(--ink); }
+
+/* assignments */
+.asgn-row { display: flex; align-items: center; gap: 13px; padding: 13px 2px; border-bottom: 1px solid var(--edge-soft); }
+.asgn-row:last-of-type { border-bottom: none; }
+.asgn-row.done .at { text-decoration: line-through; text-decoration-color: var(--red); color: var(--ink-faint); }
+.asgn-row .row-main { flex: 1; min-width: 0; }
+.asgn-row .at { font-size: 15px; }
+.asgn-row .acourse { font-size: 12.5px; color: var(--ink-faint); margin-top: 2px; }
+.asgn-due { flex: 0 0 auto; font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 100px; border: 1px solid var(--edge); color: var(--ink-soft); white-space: nowrap; }
+.asgn-due.soon { color: var(--red); border-color: color-mix(in oklab, var(--red) 40%, var(--edge)); }
+.asgn-due.today { background: var(--red); color: #fff; border-color: var(--red); }
+.asgn-due.over { color: var(--red); border-color: var(--red); }

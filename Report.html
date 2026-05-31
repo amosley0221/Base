@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BASE — Report</title>
+<link rel="stylesheet" href="report.css" />
+</head>
+<body>
+
+<div class="r-bar">
+  <div class="r-brand">BASE</div>
+  <div class="r-actions">
+    <a class="r-btn" href="Settings.html" data-cursor>← Back</a>
+    <button class="r-btn primary" id="printBtn" data-cursor>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
+      Print / Save as PDF
+    </button>
+  </div>
+</div>
+
+<div class="r-page" id="report"></div>
+
+<script src="store.js"></script>
+<script src="report.js"></script>
+</body>
+</html>
