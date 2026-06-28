@@ -109,3 +109,16 @@ body.modal-open { overflow: hidden; }
 .em-status.warn { color: var(--red); }
 .em-draft { min-height: 280px; line-height: 1.6; font-size: 15px; white-space: pre-wrap; }
 .em-foot { display: flex; gap: 10px; margin-top: 16px; }
+
+/* assignment type chips */
+.asgn-tag.t-essay { color: var(--red); border-color: color-mix(in oklab, var(--red) 35%, var(--edge)); }
+.asgn-tag.t-discussion { color: var(--move); border-color: color-mix(in oklab, var(--move) 40%, var(--edge)); }
+.asgn-tag.t-exam { color: var(--personal); border-color: color-mix(in oklab, var(--personal) 40%, var(--edge)); }
+.asgn-tag.t-homework { color: var(--ink-soft); border-color: var(--edge); }
+
+/* essay revise bar */
+.em-revise { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0 2px; }
+.em-revise-lbl { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); }
+.em-revise .rev-btn { font-size: 12.5px; padding: 6px 12px; border-radius: 100px; border: 1px solid var(--edge); background: var(--white); color: var(--ink-soft); cursor: pointer; transition: color .2s, border-color .2s; }
+.em-revise .rev-btn:hover { color: var(--red); border-color: var(--red); }
+.em-revise .rev-btn:disabled { opacity: .5; cursor: default; }

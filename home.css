@@ -363,3 +363,45 @@ pre.py .fn { color: #ffd9a0; }
   .notes-track { flex-wrap: wrap; transform: none !important; }
   .reveal { opacity: 1; transform: none; }
 }
+
+/* ===================== TAP-A-GAME (Home box score) ===================== */
+.score-card[data-eid] { cursor: pointer; transition: transform 0.18s var(--ease), border-color 0.18s var(--ease), box-shadow 0.18s var(--ease); }
+.score-card[data-eid]:hover { transform: translateY(-2px); border-color: var(--red); box-shadow: var(--shadow-lg); }
+
+body.modal-open { overflow: hidden; }
+.hg-modal[hidden] { display: none; }
+.hg-modal { position: fixed; inset: 0; z-index: 300; display: flex; align-items: center; justify-content: center; padding: 4vh 16px; }
+.hg-scrim { position: absolute; inset: 0; background: rgba(20, 4, 3, 0.45); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+.hg-card { position: relative; width: min(560px, 100%); max-height: 92vh; overflow-y: auto; background: var(--paper); border: 1px solid var(--edge); border-radius: 22px; box-shadow: var(--shadow-lg); padding: 26px clamp(18px, 4vw, 28px) 24px; }
+.hg-x { position: absolute; top: 14px; right: 16px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--edge); background: var(--white); color: var(--ink-soft); font-size: 21px; line-height: 1; cursor: pointer; transition: all 0.2s; }
+.hg-x:hover { color: var(--red); border-color: var(--red); }
+.hg-load { font-family: var(--mono); font-size: 13px; color: var(--ink-faint); padding: 24px 0; text-align: center; }
+
+.hg-top { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; }
+.hg-team { display: flex; flex-direction: column; gap: 3px; }
+.hg-team.home { align-items: flex-end; text-align: right; }
+.hg-abbr { font-family: var(--mono); font-weight: 700; font-size: 15px; letter-spacing: 0.04em; }
+.hg-tn { font-size: 13px; color: var(--ink-soft); }
+.hg-rec { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+.hg-score { font-size: clamp(2rem, 8vw, 2.8rem); font-weight: 200; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 8px; }
+.hg-score .hg-dash { color: var(--ink-faint); font-weight: 100; }
+.hg-status { text-align: center; margin: 12px 0 6px; font-size: 13px; color: var(--ink-soft); display: flex; gap: 8px; align-items: center; justify-content: center; }
+
+.hg-lines { margin-top: 16px; border: 1px solid var(--edge-soft); border-radius: 12px; overflow: hidden; }
+.hg-lines table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12.5px; }
+.hg-lines th, .hg-lines td { padding: 8px 10px; text-align: center; border-bottom: 1px solid var(--edge-soft); }
+.hg-lines tr:last-child td { border-bottom: none; }
+.hg-lines th { background: var(--paper-2); color: var(--ink-faint); font-size: 9.5px; letter-spacing: 0.1em; }
+.hg-lines td:first-child, .hg-lines th:first-child { text-align: left; font-weight: 700; }
+.hg-lines td.t { color: var(--red); font-weight: 700; }
+
+.hg-sec { font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-soft); margin: 20px 0 10px; }
+.hg-cmp { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--edge-soft); font-size: 13.5px; }
+.hg-cmp .cv { font-variant-numeric: tabular-nums; font-weight: 600; }
+.hg-cmp .cv.h { text-align: right; color: var(--red); }
+.hg-cmp .cl { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); text-align: center; }
+.hg-lead { display: grid; grid-template-columns: 88px 1fr auto auto; gap: 8px; align-items: baseline; padding: 7px 0; border-bottom: 1px dashed var(--edge-soft); font-size: 13.5px; }
+.hg-lead .ll { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+.hg-lead .lw { font-weight: 600; }
+.hg-lead .lt { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+.hg-lead .lv { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--red); }

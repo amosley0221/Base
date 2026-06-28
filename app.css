@@ -290,3 +290,16 @@ html.mode-dark .nav-links a.active::after { background: var(--red); }
 html.mode-dark .theme-toggle .ic-moon { display: none; }
 html.mode-dark .theme-toggle .ic-sun { display: block; }
 @media (max-width: 640px) { .theme-toggle { width: 34px; height: 34px; } .theme-toggle svg { width: 15px; height: 15px; } }
+
+/* ===================== NOTES — AI assist row ===================== */
+.nfoot-right { display: flex; align-items: center; gap: 8px; }
+.ncard-ai { font-size: 12px; font-weight: 600; color: var(--ink-soft); background: none; border: 1px solid var(--edge); border-radius: 100px; padding: 4px 11px; cursor: pointer; transition: color .2s, border-color .2s; }
+.ncard-ai:hover { color: var(--red); border-color: var(--red); }
+.ai-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--edge-soft); }
+.ai-row[hidden] { display: none; }
+.ai-row .rev-btn { font-size: 12px; padding: 5px 10px; border-radius: 100px; border: 1px solid var(--edge); background: var(--white); color: var(--ink-soft); cursor: pointer; transition: color .2s, border-color .2s; }
+.ai-row .rev-btn:hover { color: var(--red); border-color: var(--red); }
+.ai-row .rev-btn:disabled { opacity: .5; cursor: default; }
+.ai-row .ai-stat { font-size: 12px; color: var(--ink-faint); margin-left: auto; }
+.ai-row .ai-stat.ok { color: var(--move); }
+.ai-row .ai-stat.warn { color: var(--red); }
