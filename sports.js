@@ -243,18 +243,29 @@ window.Sports = (function () {
         });
       });
 
-      // live situation (baseball: bases, count, outs, batter, pitcher; also football down/distance)
+      // live situation — baseball (bases/count/batter/pitcher), football
+      // (down & distance / possession), and a last-play line for any sport.
       let situation = null;
-      const sit = d.situation || (comp && comp.situation) || null;
-      if (sit && (st.state || "post") === "in") {
+      if ((st.state || "post") === "in") {
+        const sit = d.situation || (comp && comp.situation) || {};
         const nm = (p) => (p && p.athlete && (p.athlete.shortName || p.athlete.displayName)) || "";
+        // possession team (football)
+        let possession = "";
+        if (sit.possession) {
+          const pc = cs.find((c) => c.team && String(c.team.id) === String(sit.possession));
+          possession = (pc && pc.team && (pc.team.abbreviation || pc.team.shortDisplayName)) || "";
+        }
+        // last play — from situation, else the final entry of the play feed
+        let lastPlay = (sit.lastPlay && (sit.lastPlay.text || sit.lastPlay.shortText)) || (typeof sit.lastPlay === "string" ? sit.lastPlay : "");
+        if (!lastPlay && Array.isArray(d.plays) && d.plays.length) { const lp = d.plays[d.plays.length - 1]; lastPlay = (lp && (lp.text || lp.shortText)) || ""; }
         situation = {
           balls: sit.balls, strikes: sit.strikes, outs: sit.outs,
           onFirst: !!sit.onFirst, onSecond: !!sit.onSecond, onThird: !!sit.onThird,
           batter: nm(sit.batter), batterLine: (sit.batter && sit.batter.summary) || "",
           pitcher: nm(sit.pitcher), pitcherLine: (sit.pitcher && sit.pitcher.summary) || "",
-          lastPlay: (sit.lastPlay && (sit.lastPlay.text || sit.lastPlay.shortText)) || (typeof sit.lastPlay === "string" ? sit.lastPlay : ""),
-          downDistance: sit.downDistanceText || "",
+          downDistance: sit.downDistanceText || sit.shortDownDistanceText || "",
+          possession, isRedZone: !!sit.isRedZone,
+          lastPlay,
         };
       }
 
