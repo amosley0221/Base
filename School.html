@@ -109,14 +109,46 @@
     <div class="add-row" style="flex-wrap:wrap">
       <input class="field" id="aTitle" placeholder="Assignment (e.g. PS3 due)" style="flex:1;min-width:170px" />
       <input class="field" id="aCourse" placeholder="Course" style="flex:0 0 150px" />
-      <input class="field" id="aDue" type="date" style="flex:0 0 160px" />
+      <input class="field" id="aDue" type="date" style="flex:0 0 150px" />
+      <select class="field" id="aType" style="flex:0 0 120px" aria-label="Type">
+        <option value="task">Task</option>
+        <option value="essay">Essay</option>
+      </select>
       <button class="btn btn--red" id="addAsgn">Add</button>
     </div>
+    <p class="muted" style="margin-top:10px">Mark something an <b>Essay</b> to get an AI draft you can revise. Add your Anthropic API key on the <a href="Settings.html">Settings</a> page first.</p>
   </section>
 </main>
 
+<!-- essay assistant -->
+<div class="essay-modal" id="essayModal" hidden>
+  <div class="em-scrim" data-eclose></div>
+  <div class="em-card" role="dialog" aria-modal="true" aria-labelledby="emTitle">
+    <button class="em-x" data-eclose aria-label="Close" data-cursor>&times;</button>
+    <div class="em-head">
+      <div class="eyebrow">Essay assistant</div>
+      <h3 id="emTitle">Essay</h3>
+      <div class="em-course" id="emCourse"></div>
+    </div>
+    <label class="label" for="emNotes">Notes &amp; requirements <span class="em-sub">— the draft is based on this</span></label>
+    <textarea class="field" id="emNotes" rows="5" placeholder="Prompt, thesis, key points, length, tone, sources, rubric…"></textarea>
+    <div class="em-actions">
+      <button class="btn btn--red" id="emGenerate" data-cursor>Draft essay</button>
+      <button class="btn btn--ghost" id="emStop" data-cursor hidden>Stop</button>
+      <span class="em-status" id="emStatus"></span>
+    </div>
+    <label class="label" for="emDraft">Draft <span class="em-sub">— edit freely, it's yours to revise</span></label>
+    <textarea class="field em-draft" id="emDraft" rows="15" placeholder="Your draft will appear here…"></textarea>
+    <div class="em-foot">
+      <button class="btn btn--ghost btn--sm" id="emCopy" data-cursor>Copy</button>
+      <button class="btn btn--red btn--sm" id="emSave" data-cursor>Save draft</button>
+    </div>
+  </div>
+</div>
+
 <script src="store.js"></script>
 <script src="ui.js"></script>
+<script src="ai.js"></script>
 <script src="school.js"></script>
 <script src="theme.js"></script>
 <script src="cursor.js"></script>
