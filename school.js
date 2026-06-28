@@ -109,6 +109,96 @@
     wireCourseList("#plannedList", "planned");
   }
 
+  // ---------- BY SEMESTER ----------
+  const SEASON = { spring: 1, summer: 2, fall: 3, winter: 4 };
+  let selSem = null;
+  function termOrder(t) { const m = String(t).match(/(spring|summer|fall|winter)\s+(\d{4})/i); return m ? (+m[2]) * 10 + (SEASON[m[1].toLowerCase()] || 0) : -1; }
+  function allCourses() { return sc.completed.map((c) => ({ c, done: true })).concat(sc.planned.map((c) => ({ c, done: false }))); }
+  function termList() {
+    const set = []; allCourses().forEach(({ c }) => { const t = c.term || "Unscheduled"; if (set.indexOf(t) < 0) set.push(t); });
+    return set.sort((a, b) => termOrder(b) - termOrder(a));
+  }
+  function asgnFor(name) { return (sc.assignments || []).filter((a) => a.course && name && a.course.toLowerCase() === name.toLowerCase()); }
+  function renderSemesters() {
+    const tabs = $("#semTabs"); if (!tabs) return;
+    const terms = termList();
+    if (!terms.length) { tabs.innerHTML = ""; $("#semCourses").innerHTML = `<p class="muted">Add classes (with a term) to browse by semester.</p>`; return; }
+    if (!selSem || terms.indexOf(selSem) < 0) selSem = terms[0];
+    tabs.innerHTML = terms.map((t) => `<button class="sem-tab${t === selSem ? " active" : ""}" data-term="${esc(t)}">${esc(t)}</button>`).join("");
+    $$("#semTabs .sem-tab").forEach((b) => b.addEventListener("click", () => { selSem = b.dataset.term; renderSemesters(); }));
+    renderSemCourses();
+  }
+  function renderSemCourses() {
+    const wrap = $("#semCourses"); if (!wrap) return;
+    const list = allCourses().filter(({ c }) => (c.term || "Unscheduled") === selSem);
+    wrap.innerHTML = list.length ? list.map(({ c, done }) => {
+      const n = asgnFor(c.name).length;
+      return `<button class="sem-course" data-id="${c.id}">
+        <div class="scz-top"><span class="scz-name">${esc(c.name)}</span><span class="scz-grade" data-tier="${gradeTier(c.grade)}">${esc(c.grade)}</span></div>
+        <div class="scz-meta">${c.credits} cr${c.teacher ? ` · ${esc(c.teacher)}` : ""}${n ? ` · ${n} assignment${n > 1 ? "s" : ""}` : ""}${done ? "" : " · planned"}</div>
+      </button>`;
+    }).join("") : `<p class="muted">No classes in ${esc(selSem)} yet.</p>`;
+    $$("#semCourses .sem-course").forEach((b) => b.addEventListener("click", () => { const f = allCourses().find((x) => x.c.id === b.dataset.id); if (f) openCourse(f.c, f.done); }));
+  }
+
+  // ---------- COURSE DETAIL ----------
+  const cModal = $("#courseModal"), cBody = $("#courseBody");
+  function openCourse(c, done) {
+    cBody.innerHTML = `
+      <div class="cm-head"><div class="eyebrow">${esc(c.term || "Course")}</div><h3>${esc(c.name)}</h3>
+        <div class="cm-sub">${c.credits} credits · ${done ? "grade " + esc(c.grade) : "expected " + esc(c.grade)}</div></div>
+      <div class="cm-grid">
+        <label class="label">Teacher<input class="field" id="cmTeacher" placeholder="e.g. Dr. Nguyen" value="${esc(c.teacher || "")}" /></label>
+        <label class="label">Term<input class="field" id="cmTerm" placeholder="e.g. Fall 2025" value="${esc(c.term || "")}" /></label>
+      </div>
+      <label class="label" for="cmNotes" style="margin-top:14px">Notes</label>
+      <textarea class="field" id="cmNotes" rows="4" placeholder="Office hours, syllabus links, reminders…">${esc(c.notes || "")}</textarea>
+      <div class="cm-asgn-title">Assignments</div>
+      <div id="cmAsgn"></div>
+      <div class="add-row" style="flex-wrap:wrap;margin-top:12px">
+        <input class="field" id="cmaTitle" placeholder="Add assignment" style="flex:1;min-width:150px" />
+        <input class="field" id="cmaDue" type="date" style="flex:0 0 150px" />
+        <select class="field" id="cmaType" style="flex:0 0 130px"><option value="homework">Homework</option><option value="essay">Essay</option><option value="exam">Exam</option><option value="discussion">Discussion</option></select>
+        <button class="btn btn--red" id="cmaAdd">Add</button>
+      </div>`;
+    cModal.hidden = false; document.body.classList.add("modal-open");
+    $("#cmTeacher").addEventListener("input", (e) => { c.teacher = e.target.value; persist(); });
+    $("#cmTerm").addEventListener("input", (e) => { c.term = e.target.value; persist(); });
+    $("#cmNotes").addEventListener("input", (e) => { c.notes = e.target.value; persist(); });
+    $("#cmaAdd").addEventListener("click", () => {
+      const t = $("#cmaTitle").value.trim(), due = $("#cmaDue").value, type = $("#cmaType").value;
+      if (!t || !due) { toast("Add a title and due date"); return; }
+      if (!sc.assignments) sc.assignments = [];
+      sc.assignments.push({ id: S.uid("as"), title: t, course: c.name, due, done: false, type, notes: "" });
+      $("#cmaTitle").value = ""; $("#cmaDue").value = ""; persist(); renderCourseAsgn(c); renderAsgn();
+    });
+    renderCourseAsgn(c);
+  }
+  function renderCourseAsgn(c) {
+    const box = $("#cmAsgn"); if (!box) return;
+    const list = asgnFor(c.name).slice().sort((a, b) => (a.done - b.done) || (S.daysUntil(a.due) - S.daysUntil(b.due)));
+    box.innerHTML = list.length ? list.map((a) => `
+      <div class="asgn-row ${a.done ? "done" : ""}" data-id="${a.id}">
+        <div class="check ${a.done ? "on" : ""}" role="button" title="mark done"></div>
+        <div class="row-main"><div class="at">${esc(a.title)}${a.type ? ` <span class="asgn-tag t-${esc(a.type)}">${esc(a.type)}</span>` : ""}</div></div>
+        ${writeable(a) ? `<button class="asgn-ai" data-cai title="Draft with AI">✎</button>` : ""}
+        ${dueChip(a.due)}
+        <button class="del" title="delete">×</button>
+      </div>`).join("") : `<p class="muted">No assignments for this class yet.</p>`;
+    $$("#cmAsgn .asgn-row").forEach((row) => {
+      const a = sc.assignments.find((x) => x.id === row.dataset.id);
+      row.querySelector(".check").addEventListener("click", () => { a.done = !a.done; persist(); renderCourseAsgn(c); renderAsgn(); });
+      row.querySelector(".del").addEventListener("click", () => { sc.assignments = sc.assignments.filter((x) => x.id !== a.id); persist(); renderCourseAsgn(c); renderAsgn(); toast("Removed"); });
+      const ai = row.querySelector("[data-cai]");
+      if (ai) ai.addEventListener("click", () => { closeCourse(); openEssay(a); });
+    });
+  }
+  function closeCourse() { if (cModal) { cModal.hidden = true; document.body.classList.remove("modal-open"); } renderSemCourses(); }
+  if (cModal) {
+    cModal.addEventListener("click", (e) => { if (e.target.closest("[data-cclose]")) closeCourse(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !cModal.hidden) closeCourse(); });
+  }
+
   // ---------- PACE PLANNER ----------
   function renderPace() {
     const { cur, needed, remaining } = compute();
@@ -180,13 +270,13 @@
   $("#addCompleted").addEventListener("click", () => {
     const name = $("#cName").value.trim(), cr = +$("#cCred").value, grade = $("#cGrade").value;
     if (!name || !(cr > 0)) { toast("Add a course and credits"); return; }
-    sc.completed.push({ id: S.uid("c"), name, credits: cr, grade });
+    sc.completed.push({ id: S.uid("c"), name, credits: cr, grade, term: selSem || "", teacher: "", notes: "" });
     $("#cName").value = ""; $("#cCred").value = ""; persist(); renderAll(); toast("Class added");
   });
   $("#addPlanned").addEventListener("click", () => {
     const name = $("#pName").value.trim(), cr = +$("#pCred").value, grade = $("#pGrade").value;
     if (!name || !(cr > 0)) { toast("Add a course and credits"); return; }
-    sc.planned.push({ id: S.uid("p"), name, credits: cr, grade });
+    sc.planned.push({ id: S.uid("p"), name, credits: cr, grade, term: selSem || "", teacher: "", notes: "" });
     $("#pName").value = ""; $("#pCred").value = ""; persist(); renderAll(); toast("Class added");
   });
   $("#addAsgn").addEventListener("click", () => {
@@ -295,6 +385,6 @@
   bindSlider("#targetSlider", "#targetVal", "targetGpa", (v) => (+v).toFixed(2));
 
   // ---------- RENDER ----------
-  function renderAll() { renderDial(); renderStats(); renderDegree(); renderCompleted(); renderPlanned(); renderPace(); }
+  function renderAll() { renderDial(); renderStats(); renderDegree(); renderCompleted(); renderPlanned(); renderPace(); renderSemesters(); }
   renderAll(); renderAsgn();
 })();
