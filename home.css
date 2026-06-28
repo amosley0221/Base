@@ -407,3 +407,20 @@ body.modal-open { overflow: hidden; }
 .hg-lead .lv { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--red); }
 
 .hg-empty { font-size: 13.5px; color: var(--ink-soft); line-height: 1.55; padding: 18px 2px 4px; }
+
+/* ===================== LIVE BASEBALL SITUATION ===================== */
+.bz { display: flex; align-items: center; gap: 22px; margin: 16px 0 8px; }
+.bz-diamond { position: relative; width: 92px; height: 78px; flex: 0 0 auto; }
+.bz-base { position: absolute; width: 17px; height: 17px; border: 1.5px solid var(--ink-faint); background: transparent; transform: rotate(45deg); border-radius: 2px; }
+.bz-base.on { background: var(--red); border-color: var(--red); }
+.bz-base.b2 { top: 4px; left: 50%; margin-left: -8.5px; }
+.bz-base.b1 { top: 30px; right: 6px; }
+.bz-base.b3 { top: 30px; left: 6px; }
+.bz-counts { display: flex; gap: 22px; }
+.bz-c { display: flex; flex-direction: column; }
+.bz-c .bz-n { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1; }
+.bz-c .bz-l { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); margin-top: 4px; }
+.bz-line { display: flex; gap: 10px; align-items: baseline; padding: 7px 0; border-bottom: 1px dashed var(--edge-soft); font-size: 13.5px; }
+.bz-line .bz-k { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); flex: 0 0 62px; }
+.bz-line .bz-v { color: var(--ink); }
+.bz-last { font-size: 13px; color: var(--ink-soft); font-style: italic; margin-top: 10px; }

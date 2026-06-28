@@ -306,6 +306,24 @@ ${items}
       <div class="hg-team home"><div class="hg-abbr">${esc(h.abbr || h.name || "")}</div><div class="hg-tn">${esc(h.name || "")}</div>${h.record ? `<div class="hg-rec">${esc(h.record)}</div>` : ""}</div>
     </div>
     <div class="hg-status">${tag} ${esc(sum.detail || "")}${sum.venue ? ` · ${esc(sum.venue)}` : ""}</div>`;
+    // live baseball situation: bases, count, outs, batter, pitcher
+    if (sum.situation && sum._sport === "baseball") {
+      const s = sum.situation;
+      html += `<div class="bz">
+        <div class="bz-diamond" aria-label="bases">
+          <span class="bz-base b2${s.onSecond ? " on" : ""}"></span>
+          <span class="bz-base b3${s.onThird ? " on" : ""}"></span>
+          <span class="bz-base b1${s.onFirst ? " on" : ""}"></span>
+        </div>
+        <div class="bz-counts">
+          <div class="bz-c"><span class="bz-n">${s.balls != null ? s.balls : 0}–${s.strikes != null ? s.strikes : 0}</span><span class="bz-l">count</span></div>
+          <div class="bz-c"><span class="bz-n">${s.outs != null ? s.outs : 0}</span><span class="bz-l">${s.outs === 1 ? "out" : "outs"}</span></div>
+        </div>
+      </div>`;
+      if (s.batter) html += `<div class="bz-line"><span class="bz-k">At bat</span><span class="bz-v">${esc(s.batter)}${s.batterLine ? ` · ${esc(s.batterLine)}` : ""}</span></div>`;
+      if (s.pitcher) html += `<div class="bz-line"><span class="bz-k">Pitching</span><span class="bz-v">${esc(s.pitcher)}${s.pitcherLine ? ` · ${esc(s.pitcherLine)}` : ""}</span></div>`;
+      if (s.lastPlay) html += `<div class="bz-last">${esc(s.lastPlay)}</div>`;
+    }
     const hasLines = sum.periods && sum.periods.length;
     const hasStats = sum.teamStats && sum.teamStats.length;
     const hasLeaders = sum.leaders && sum.leaders.length;
@@ -336,6 +354,7 @@ ${items}
     const mine = ++gToken;
     if (!silent) { gBody.innerHTML = `<div class="hg-load">Loading the box score…</div>`; gModal.hidden = false; document.body.classList.add("modal-open"); }
     const sum = await window.Sports.gameSummary(sport, league, eid);
+    if (sum) sum._sport = sport;
     if (mine !== gToken || !gInfo) return;
     gBody.innerHTML = sum ? boxHTML(sum) : `<div class="hg-load">Couldn't load this game's stats — live data needs a connection.</div>`;
     if (sum && sum.state === "in") gTimer = setTimeout(() => { if (!document.hidden && gInfo) openGame(eid, sport, league, true); }, 30000); // live box score refreshes
