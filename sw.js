@@ -4,7 +4,7 @@
    cache-busted URLs still resolve offline. localStorage (your
    data) is separate and untouched by cache updates.
    =========================================================== */
-const CACHE = "base-cache-v5";
+const CACHE = "base-cache-v6";
 const CORE = [
   "Home.html", "Plan.html", "Notes.html", "Calendar.html", "Budget.html",
   "School.html", "Scoreboard.html", "Settings.html", "Report.html",

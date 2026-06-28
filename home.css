@@ -405,3 +405,5 @@ body.modal-open { overflow: hidden; }
 .hg-lead .lw { font-weight: 600; }
 .hg-lead .lt { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
 .hg-lead .lv { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--red); }
+
+.hg-empty { font-size: 13.5px; color: var(--ink-soft); line-height: 1.55; padding: 18px 2px 4px; }

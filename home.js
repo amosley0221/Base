@@ -297,25 +297,33 @@ ${items}
 
   // ---------- BOX SCORE (tap a game on Home) ----------
   function boxHTML(sum) {
-    const a = sum.away, h = sum.home;
-    const tag = sum.state === "in" ? `<span class="sc-tag live">LIVE</span>` : sum.state === "post" ? `<span class="sc-tag">FINAL</span>` : `<span class="sc-tag">NEXT</span>`;
+    const a = sum.away || {}, h = sum.home || {};
+    const tag = sum.state === "in" ? `<span class="sc-tag live">LIVE</span>` : sum.state === "post" ? `<span class="sc-tag">FINAL</span>` : `<span class="sc-tag">SCHEDULED</span>`;
     const sc = (v) => (v == null || v === "") ? "–" : esc(v);
     let html = `<div class="hg-top">
-      <div class="hg-team"><div class="hg-abbr">${esc(a.abbr || a.name)}</div><div class="hg-tn">${esc(a.name)}</div>${a.record ? `<div class="hg-rec">${esc(a.record)}</div>` : ""}</div>
+      <div class="hg-team"><div class="hg-abbr">${esc(a.abbr || a.name || "")}</div><div class="hg-tn">${esc(a.name || "")}</div>${a.record ? `<div class="hg-rec">${esc(a.record)}</div>` : ""}</div>
       <div class="hg-score">${sc(a.score)}<span class="hg-dash">–</span>${sc(h.score)}</div>
-      <div class="hg-team home"><div class="hg-abbr">${esc(h.abbr || h.name)}</div><div class="hg-tn">${esc(h.name)}</div>${h.record ? `<div class="hg-rec">${esc(h.record)}</div>` : ""}</div>
+      <div class="hg-team home"><div class="hg-abbr">${esc(h.abbr || h.name || "")}</div><div class="hg-tn">${esc(h.name || "")}</div>${h.record ? `<div class="hg-rec">${esc(h.record)}</div>` : ""}</div>
     </div>
-    <div class="hg-status">${tag} ${esc(sum.detail || "")}</div>`;
-    if (sum.periods && sum.periods.length) {
+    <div class="hg-status">${tag} ${esc(sum.detail || "")}${sum.venue ? ` · ${esc(sum.venue)}` : ""}</div>`;
+    const hasLines = sum.periods && sum.periods.length;
+    const hasStats = sum.teamStats && sum.teamStats.length;
+    const hasLeaders = sum.leaders && sum.leaders.length;
+    if (hasLines) {
       const head = sum.periods.map((p) => `<th>${esc(p)}</th>`).join("");
       const row = (s) => `<tr><td>${esc(s.abbr || s.name)}</td>${sum.periods.map((_, i) => `<td>${esc(s.linescores[i] != null ? s.linescores[i] : "·")}</td>`).join("")}<td class="t">${esc(s.score != null ? s.score : "")}</td></tr>`;
       html += `<div class="hg-lines"><table><thead><tr><th></th>${head}<th>T</th></tr></thead><tbody>${row(a)}${row(h)}</tbody></table></div>`;
     }
-    if (sum.teamStats && sum.teamStats.length) {
+    if (hasStats) {
       html += `<div class="hg-sec">Team stats</div>` + sum.teamStats.map((s) => `<div class="hg-cmp"><span class="cv">${esc(s.away)}</span><span class="cl">${esc(s.label)}</span><span class="cv h">${esc(s.home)}</span></div>`).join("");
     }
-    if (sum.leaders && sum.leaders.length) {
+    if (hasLeaders) {
       html += `<div class="hg-sec">Game leaders</div>` + sum.leaders.map((l) => `<div class="hg-lead"><span class="ll">${esc(l.cat)}</span><span class="lw">${esc(l.who || "—")}</span><span class="lt">${esc(l.team || "")}</span><span class="lv">${esc(l.val || "")}</span></div>`).join("");
+    }
+    if (!hasLines && !hasStats && !hasLeaders) {
+      html += `<div class="hg-empty">${sum.state === "pre"
+        ? "This game hasn't started yet — the live score, box score and stats will appear here once it's underway."
+        : "No detailed box score is available for this game from the live feed."}</div>`;
     }
     return html;
   }
