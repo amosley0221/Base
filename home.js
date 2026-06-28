@@ -306,23 +306,31 @@ ${items}
       <div class="hg-team home"><div class="hg-abbr">${esc(h.abbr || h.name || "")}</div><div class="hg-tn">${esc(h.name || "")}</div>${h.record ? `<div class="hg-rec">${esc(h.record)}</div>` : ""}</div>
     </div>
     <div class="hg-status">${tag} ${esc(sum.detail || "")}${sum.venue ? ` · ${esc(sum.venue)}` : ""}</div>`;
-    // live baseball situation: bases, count, outs, batter, pitcher
-    if (sum.situation && sum._sport === "baseball") {
-      const s = sum.situation;
-      html += `<div class="bz">
-        <div class="bz-diamond" aria-label="bases">
-          <span class="bz-base b2${s.onSecond ? " on" : ""}"></span>
-          <span class="bz-base b3${s.onThird ? " on" : ""}"></span>
-          <span class="bz-base b1${s.onFirst ? " on" : ""}"></span>
-        </div>
-        <div class="bz-counts">
-          <div class="bz-c"><span class="bz-n">${s.balls != null ? s.balls : 0}–${s.strikes != null ? s.strikes : 0}</span><span class="bz-l">count</span></div>
-          <div class="bz-c"><span class="bz-n">${s.outs != null ? s.outs : 0}</span><span class="bz-l">${s.outs === 1 ? "out" : "outs"}</span></div>
-        </div>
-      </div>`;
-      if (s.batter) html += `<div class="bz-line"><span class="bz-k">At bat</span><span class="bz-v">${esc(s.batter)}${s.batterLine ? ` · ${esc(s.batterLine)}` : ""}</span></div>`;
-      if (s.pitcher) html += `<div class="bz-line"><span class="bz-k">Pitching</span><span class="bz-v">${esc(s.pitcher)}${s.pitcherLine ? ` · ${esc(s.pitcherLine)}` : ""}</span></div>`;
-      if (s.lastPlay) html += `<div class="bz-last">${esc(s.lastPlay)}</div>`;
+    // live situation
+    const s = sum.situation;
+    if (s) {
+      if (sum._sport === "baseball" && (s.onFirst || s.onSecond || s.onThird || s.balls != null || s.outs != null)) {
+        html += `<div class="bz">
+          <div class="bz-diamond" aria-label="bases">
+            <span class="bz-base b2${s.onSecond ? " on" : ""}"></span>
+            <span class="bz-base b3${s.onThird ? " on" : ""}"></span>
+            <span class="bz-base b1${s.onFirst ? " on" : ""}"></span>
+          </div>
+          <div class="bz-counts">
+            <div class="bz-c"><span class="bz-n">${s.balls != null ? s.balls : 0}–${s.strikes != null ? s.strikes : 0}</span><span class="bz-l">count</span></div>
+            <div class="bz-c"><span class="bz-n">${s.outs != null ? s.outs : 0}</span><span class="bz-l">${s.outs === 1 ? "out" : "outs"}</span></div>
+          </div>
+        </div>`;
+        if (s.batter) html += `<div class="bz-line"><span class="bz-k">At bat</span><span class="bz-v">${esc(s.batter)}${s.batterLine ? ` · ${esc(s.batterLine)}` : ""}</span></div>`;
+        if (s.pitcher) html += `<div class="bz-line"><span class="bz-k">Pitching</span><span class="bz-v">${esc(s.pitcher)}${s.pitcherLine ? ` · ${esc(s.pitcherLine)}` : ""}</span></div>`;
+      } else if (sum._sport === "football" && (s.downDistance || s.possession)) {
+        html += `<div class="fb-sit">
+          ${s.possession ? `<div class="fb-poss"><span class="fb-dot"></span>${esc(s.possession)} ball</div>` : ""}
+          ${s.downDistance ? `<div class="fb-dd">${esc(s.downDistance)}</div>` : ""}
+          ${s.isRedZone ? `<span class="fb-rz">RED ZONE</span>` : ""}
+        </div>`;
+      }
+      if (s.lastPlay) html += `<div class="bz-last"><span class="bz-k">Last play</span> ${esc(s.lastPlay)}</div>`;
     }
     const hasLines = sum.periods && sum.periods.length;
     const hasStats = sum.teamStats && sum.teamStats.length;
