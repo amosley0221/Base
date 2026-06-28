@@ -211,17 +211,68 @@ ${items}
     else { tag = `<span class="sc-tag">NEXT</span>`; main = `<span class="sc-vs">${vs}</span> ${esc(g.opp)}`; sub = fmtGameTime(g.date); }
     return `<div class="sc-head"><div class="sc-team">${esc(t.name)}</div>${tag}</div><div class="sc-line">${main}</div><div class="sc-sub">${sub}</div>`;
   }
+  // recency: Home never shows a final older than this
+  const RECENT_MS = 2 * 86400000; // 2 days
+  function recent(date) { return date && (Date.now() - date.getTime()) <= RECENT_MS; }
+  function relAgo(date) {
+    const d = Math.floor((Date.now() - date.getTime()) / 86400000);
+    return d <= 0 ? "today" : d === 1 ? "yesterday" : d + "d ago";
+  }
+  // leagues to pull live/recent games from = your teams' leagues + followed leagues
+  function followedLeagues() {
+    const L = window.Sports.LEAGUES, map = new Map();
+    (state.teams || []).forEach((t) => { if (!map.has(t.league)) map.set(t.league, L.find((x) => x.league === t.league) || { sport: t.sport, league: t.league, label: (t.league || "").toUpperCase() }); });
+    (state.followLeagues || []).forEach((f) => { if (!map.has(f.league)) map.set(f.league, L.find((x) => x.league === f.league) || { sport: f.sport, league: f.league, label: (f.league || "").toUpperCase() }); });
+    return Array.from(map.values()).slice(0, 8);
+  }
+  function leagueGameCard(lg, game) {
+    const live = game.state === "in", a = game.away || {}, h = game.home || {};
+    const tag = live ? `<span class="sc-tag live">LIVE</span>` : `<span class="sc-tag">FINAL</span>`;
+    const sub = live ? (game.detail || "In progress") : ("Final · " + relAgo(game.date));
+    const as = a.score != null ? a.score : "", hs = h.score != null ? h.score : "";
+    return `<div class="score-card"><div class="sc-head"><div class="sc-team">${esc(lg.label)}</div>${tag}</div>
+      <div class="sc-line">${esc(a.abbr || a.name || "")} <b>${as}</b>–<b>${hs}</b> ${esc(h.abbr || h.name || "")}</div>
+      <div class="sc-sub">${sub}</div></div>`;
+  }
+
   async function renderScores() {
     const grid = $("#scoreGrid");
-    if (!state.teams || !state.teams.length) { grid.innerHTML = `<p class="muted">No teams yet — add some on the Plan page.</p>`; return; }
-    grid.innerHTML = state.teams.map((t) => `<div class="score-card" data-key="${t.league}-${t.id}"><div class="sc-head"><div class="sc-team">${esc(t.name)}</div></div><div class="sc-line muted">Loading…</div></div>`).join("");
-    const results = await Promise.all(state.teams.map((t) => window.Sports.teamGame(t)));
+    const teams = state.teams || [], leagues = followedLeagues();
+    if (!teams.length && !leagues.length) { grid.innerHTML = `<p class="muted">No teams yet — add some on the Scoreboard page.</p>`; return; }
+    grid.innerHTML = `<div class="score-card"><div class="sc-line muted">Loading live scores…</div></div>`;
+    const MAX = 6;
+
+    // your teams' games — but drop finals older than 2 days
+    const results = await Promise.all(teams.map((t) => window.Sports.teamGame(t)));
     sportsToday = [];
+    const teamCards = [], usedIds = new Set();
     results.forEach((res) => {
-      const el = $(`.score-card[data-key="${res.team.league}-${res.team.id}"]`);
-      if (el) el.innerHTML = scoreCard(res);
       if (res.todayGame) sportsToday.push({ team: res.team.name, time: res.todayGame.date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }), live: res.todayGame.state === "in" });
+      const g = res.chosen;
+      if (!g || (g.state === "post" && !recent(g.date))) return; // stale final → skip, backfill below
+      if (g.id) usedIds.add(String(g.id));
+      const rank = g.state === "in" ? 0 : g.state === "post" ? 1 : 2;
+      teamCards.push({ rank, date: g.date, html: `<div class="score-card">${scoreCard(res)}</div>` });
     });
+    teamCards.sort((a, b) => a.rank - b.rank || (a.rank === 2 ? a.date - b.date : b.date - a.date));
+
+    // backfill open slots with live / recently-ended games from followed leagues (World Cup, etc.)
+    const leagueCards = [];
+    if (teamCards.length < MAX) {
+      const boards = await Promise.all(leagues.map((lg) => window.Sports.leagueScoreboard(lg.sport, lg.league).then((g) => ({ lg, games: g })).catch(() => ({ lg, games: null }))));
+      boards.forEach(({ lg, games }) => (games || []).forEach((game) => {
+        const live = game.state === "in", recentFinal = game.state === "post" && recent(game.date);
+        if (!live && !recentFinal) return;
+        if (game.id && usedIds.has(String(game.id))) return;
+        if (game.id) usedIds.add(String(game.id));
+        leagueCards.push({ rank: live ? 0 : 1, date: game.date, html: leagueGameCard(lg, game) });
+      }));
+      leagueCards.sort((a, b) => a.rank - b.rank || b.date - a.date);
+    }
+
+    const cards = teamCards.concat(leagueCards).slice(0, MAX);
+    grid.innerHTML = cards.length ? cards.map((c) => c.html).join("")
+      : `<div class="score-card"><div class="sc-line muted">No live or recent games right now.</div></div>`;
     renderPreview();
   }
 
