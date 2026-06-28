@@ -64,11 +64,28 @@
     S.save(state); myKeys.add((opt.dataset.name || "").toLowerCase());
     renderManageList(); if (view === "mine") render();
   });
+  // ---------- FOLLOW LEAGUES (whole-league updates, incl. World Cup) ----------
+  function renderFollowLeagues() {
+    const host = $("#sbmLeagueChips"); if (!host) return;
+    const on = new Set((state.followLeagues || []).map((f) => f.league));
+    host.innerHTML = SP.LEAGUES.map((l) => `<button class="sbm-lchip${on.has(l.league) ? " on" : ""}" data-league="${l.league}" data-cursor>${esc(l.label)}</button>`).join("");
+    $$("#sbmLeagueChips .sbm-lchip").forEach((b) => b.addEventListener("click", () => {
+      const info = leagueInfo(b.dataset.league); if (!info) return;
+      const arr = state.followLeagues || (state.followLeagues = []);
+      const i = arr.findIndex((f) => f.league === info.league);
+      if (i >= 0) arr.splice(i, 1); else arr.push({ sport: info.sport, league: info.league });
+      S.save(state); b.classList.toggle("on");
+    }));
+  }
+  const followAll = $("#sbmFollowAll"), followNone = $("#sbmFollowNone");
+  if (followAll) followAll.addEventListener("click", () => { state.followLeagues = SP.LEAGUES.map((l) => ({ sport: l.sport, league: l.league })); S.save(state); renderFollowLeagues(); });
+  if (followNone) followNone.addEventListener("click", () => { state.followLeagues = []; S.save(state); renderFollowLeagues(); });
+
   function toggleManage(show) {
     const open = show != null ? show : manage.hidden;
     manage.hidden = !open;
     if (open && !mTeam.options.length) loadTeamOptions();
-    if (open) renderManageList();
+    if (open) { renderManageList(); renderFollowLeagues(); }
   }
   $("#sbManageBtn").addEventListener("click", () => toggleManage());
   $("#sbManageClose").addEventListener("click", () => toggleManage(false));
@@ -484,8 +501,9 @@
     // leagues: followed + always NFL (insider breaking news)
     const set = new Map();
     (state.teams || []).forEach((t) => set.set(t.league, { sport: t.sport, league: t.league }));
+    (state.followLeagues || []).forEach((f) => { if (!set.has(f.league)) set.set(f.league, { sport: f.sport, league: f.league }); });
     if (!set.has("nfl")) set.set("nfl", { sport: "football", league: "nfl" });
-    const sources = Array.from(set.values()).slice(0, 4);
+    const sources = Array.from(set.values()).slice(0, 5);
     const lists = await Promise.all(sources.map((s) => SP.news(s.sport, s.league)));
     let items = [];
     lists.forEach((l) => { if (l) items = items.concat(l); });

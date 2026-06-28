@@ -99,6 +99,10 @@
       { id: "22", sport: "baseball", league: "mlb", name: "Phillies" },
       { id: "20", sport: "basketball", league: "nba", name: "76ers" },
     ],
+    // whole leagues followed for live/recent updates beyond your specific teams
+    followLeagues: [
+      { sport: "soccer", league: "fifa.world" },
+    ],
     // monthly budget — student with two jobs
     budget: {
       incomes: [
@@ -200,6 +204,7 @@
     // school
     merged.school = Object.assign({}, base.school, saved.school || {});
     if (!merged.school.assignments) merged.school.assignments = clone(base.school.assignments);
+    if (!merged.followLeagues) merged.followLeagues = clone(base.followLeagues);
     return merged;
   }
 

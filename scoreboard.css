@@ -241,3 +241,13 @@ html.mode-dark .sb-modal-scrim { background: rgba(0,0,0,0.7); }
 .brk i { width: 5px; height: 5px; border-radius: 50%; background: #fff; animation: pulse 1.4s infinite; }
 .news-src { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); letter-spacing: 0.08em; margin-top: 8px; }
 .ed-empty { color: var(--ink-faint); font-size: 14px; padding: 22px 0; }
+
+/* ===================== FOLLOW-LEAGUES (team manager) ===================== */
+.sbm-leagues { margin-top: 18px; border-top: 1px solid var(--edge-soft); padding-top: 16px; }
+.sbm-sub { font-size: 13px; color: var(--ink-soft); margin-bottom: 11px; }
+.sbm-sub span { color: var(--ink-faint); font-size: 12px; }
+.sbm-league-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.sbm-lchip { font-size: 12px; padding: 6px 12px; border-radius: 100px; border: 1px solid var(--edge); background: var(--white); color: var(--ink-soft); cursor: pointer; transition: background .2s, color .2s, border-color .2s; }
+.sbm-lchip:hover { border-color: var(--red); color: var(--red); }
+.sbm-lchip.on { background: var(--red); border-color: var(--red); color: #fff; }
+.sbm-league-actions { display: flex; gap: 8px; margin-top: 12px; }

@@ -20,6 +20,9 @@ window.Sports = (function () {
     { sport: "soccer", league: "ita.1", label: "Serie A" },
     { sport: "soccer", league: "ger.1", label: "Bundesliga" },
     { sport: "soccer", league: "uefa.europa", label: "Europa" },
+    { sport: "soccer", league: "fifa.world", label: "World Cup" },
+    { sport: "soccer", league: "fifa.wwc", label: "Women's WC" },
+    { sport: "soccer", league: "fifa.cwc", label: "Club WC" },
     { sport: "basketball", league: "wnba", label: "WNBA" },
   ];
 
