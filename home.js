@@ -361,9 +361,12 @@ ${items}
     gInfo = { eid, sport, league };
     const mine = ++gToken;
     if (!silent) { gBody.innerHTML = `<div class="hg-load">Loading the box score…</div>`; gModal.hidden = false; document.body.classList.add("modal-open"); }
-    const sum = await window.Sports.gameSummary(sport, league, eid);
-    if (sum) sum._sport = sport;
+    const [sum, live] = await Promise.all([
+      window.Sports.gameSummary(sport, league, eid),
+      window.Sports.gameSituation(sport, league, eid),   // bases/count/down — from the scoreboard feed
+    ]);
     if (mine !== gToken || !gInfo) return;
+    if (sum) { sum._sport = sport; if (live) sum.situation = live; }   // prefer the live scoreboard situation
     gBody.innerHTML = sum ? boxHTML(sum) : `<div class="hg-load">Couldn't load this game's stats — live data needs a connection.</div>`;
     if (sum && sum.state === "in") gTimer = setTimeout(() => { if (!document.hidden && gInfo) openGame(eid, sport, league, true); }, 30000); // live box score refreshes
   }
