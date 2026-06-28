@@ -281,7 +281,36 @@ window.Sports = (function () {
     } catch (e) { return null; }
   }
 
-  return { LEAGUES, teamGame, teamList, leagueScoreboard, standings, gameSummary, news };
+  // Live in-game situation for one event, from the SCOREBOARD feed (the
+  // summary endpoint doesn't carry bases/count/down-distance). Returns null
+  // unless the game is in progress.
+  async function gameSituation(sport, league, eventId) {
+    try {
+      const d = await (await fetch(`https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard`)).json();
+      const ev = (d.events || []).find((e) => String(e.id) === String(eventId));
+      const comp = ev && ev.competitions && ev.competitions[0];
+      if (!comp) return null;
+      const st = (comp.status && comp.status.type) || {};
+      if ((st.state || "") !== "in") return null;
+      const sit = comp.situation || {};
+      const cs = comp.competitors || [];
+      const nm = (p) => (p && p.athlete && (p.athlete.shortName || p.athlete.displayName)) || "";
+      let possession = "";
+      if (sit.possession) { const pc = cs.find((c) => c.team && String(c.team.id) === String(sit.possession)); possession = (pc && pc.team && (pc.team.abbreviation || pc.team.shortDisplayName)) || ""; }
+      let lastPlay = (sit.lastPlay && (sit.lastPlay.text || sit.lastPlay.shortText)) || (typeof sit.lastPlay === "string" ? sit.lastPlay : "");
+      return {
+        balls: sit.balls, strikes: sit.strikes, outs: sit.outs,
+        onFirst: !!sit.onFirst, onSecond: !!sit.onSecond, onThird: !!sit.onThird,
+        batter: nm(sit.batter), batterLine: (sit.batter && sit.batter.summary) || "",
+        pitcher: nm(sit.pitcher), pitcherLine: (sit.pitcher && sit.pitcher.summary) || "",
+        downDistance: sit.downDistanceText || sit.shortDownDistanceText || "",
+        possession, isRedZone: !!sit.isRedZone, lastPlay,
+        detail: st.shortDetail || st.detail || "",
+      };
+    } catch (e) { return null; }
+  }
+
+  return { LEAGUES, teamGame, teamList, leagueScoreboard, standings, gameSummary, gameSituation, news };
 
   // Breaking news / insider posts for a league (ESPN news API)
   async function news(sport, league) {
