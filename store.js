@@ -157,21 +157,21 @@
       targetGpa: 3.6,
       creditsPerSem: 15,    // planning pace
       completed: [
-        { id: "c1", name: "Calculus I", credits: 4, grade: "A-" },
-        { id: "c2", name: "Calculus II", credits: 4, grade: "B+" },
-        { id: "c3", name: "Intro to Programming", credits: 3, grade: "A" },
-        { id: "c4", name: "Physics I: Mechanics", credits: 4, grade: "B+" },
-        { id: "c5", name: "English Composition", credits: 3, grade: "A-" },
-        { id: "c6", name: "Digital Logic Design", credits: 3, grade: "A" },
-        { id: "c7", name: "General Chemistry", credits: 4, grade: "B" },
+        { id: "c1", name: "Calculus I", credits: 4, grade: "A-", term: "Fall 2024", teacher: "Dr. Nguyen", notes: "" },
+        { id: "c2", name: "Calculus II", credits: 4, grade: "B+", term: "Spring 2025", teacher: "Dr. Nguyen", notes: "" },
+        { id: "c3", name: "Intro to Programming", credits: 3, grade: "A", term: "Fall 2024", teacher: "Prof. Adler", notes: "" },
+        { id: "c4", name: "Physics I: Mechanics", credits: 4, grade: "B+", term: "Fall 2024", teacher: "Dr. Okafor", notes: "" },
+        { id: "c5", name: "English Composition", credits: 3, grade: "A-", term: "Spring 2025", teacher: "Prof. Reyes", notes: "" },
+        { id: "c6", name: "Digital Logic Design", credits: 3, grade: "A", term: "Spring 2025", teacher: "Dr. Bauer", notes: "" },
+        { id: "c7", name: "General Chemistry", credits: 4, grade: "B", term: "Fall 2024", teacher: "Dr. Lin", notes: "" },
       ],
       // future classes with expected grades — drives the projection
       planned: [
-        { id: "p1", name: "Data Structures", credits: 3, grade: "A-" },
-        { id: "p2", name: "Calculus III", credits: 4, grade: "B+" },
-        { id: "p3", name: "Circuits I", credits: 3, grade: "B+" },
-        { id: "p4", name: "Computer Organization", credits: 3, grade: "A-" },
-        { id: "p5", name: "Technical Writing", credits: 3, grade: "A" },
+        { id: "p1", name: "Data Structures", credits: 3, grade: "A-", term: "Fall 2025", teacher: "Prof. Adler", notes: "" },
+        { id: "p2", name: "Calculus III", credits: 4, grade: "B+", term: "Fall 2025", teacher: "Dr. Nguyen", notes: "" },
+        { id: "p3", name: "Circuits I", credits: 3, grade: "B+", term: "Fall 2025", teacher: "Dr. Bauer", notes: "" },
+        { id: "p4", name: "Computer Organization", credits: 3, grade: "A-", term: "Fall 2025", teacher: "Dr. Okafor", notes: "" },
+        { id: "p5", name: "Technical Writing", credits: 3, grade: "A", term: "Fall 2025", teacher: "Prof. Reyes", notes: "" },
       ],
       // upcoming coursework. due = ISO date. type: essay | homework | exam | discussion. notes feed the AI draft (essay/discussion).
       assignments: [

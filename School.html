@@ -120,7 +120,23 @@
     </div>
     <p class="muted" style="margin-top:10px">Mark something an <b>Essay</b> or <b>Discussion</b> to get an AI draft you can revise. Add your Anthropic API key on the <a href="Settings.html">Settings</a> page first.</p>
   </section>
+
+  <!-- by semester -->
+  <section class="card panel">
+    <div class="panel-title"><h2>By semester</h2><span class="hint">tap a term, then a course</span></div>
+    <div class="sem-tabs" id="semTabs"></div>
+    <div class="sem-courses" id="semCourses"></div>
+  </section>
 </main>
+
+<!-- course detail -->
+<div class="course-modal" id="courseModal" hidden>
+  <div class="cm-scrim" data-cclose></div>
+  <div class="cm-card" role="dialog" aria-modal="true">
+    <button class="cm-x" data-cclose aria-label="Close" data-cursor>&times;</button>
+    <div class="cm-body" id="courseBody"></div>
+  </div>
+</div>
 
 <!-- essay assistant -->
 <div class="essay-modal" id="essayModal" hidden>
