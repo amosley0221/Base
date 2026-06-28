@@ -17,6 +17,8 @@
   let liveOpen = false;   // is a live game's box score open?
   let openGame = null;    // {id, sport, league}
   let featToken = 0, featuredLive = false;
+  let newsMode = "follow";   // "follow" (tab-aware) | "top" (all major leagues)
+  const TOP_LEAGUES = ["nfl", "nba", "mlb", "nhl", "eng.1", "college-football"];
 
   // leagues to pull current scores from = your teams' leagues + followed leagues
   function followedLeaguesSb() {
@@ -37,6 +39,13 @@
   $$("#sbTabs .sb-tab").forEach((b) => b.addEventListener("click", () => { view = b.dataset.key; syncTabs(); render(); }));
   function syncTabs() { $$("#sbTabs .sb-tab").forEach((b) => b.classList.toggle("active", b.dataset.key === view)); }
   $("#sbRefresh").addEventListener("click", () => render());
+
+  // wire toggle: Following (tab-aware) vs Top headlines (all major leagues)
+  $$("#newsToggle .ntog").forEach((b) => b.addEventListener("click", () => {
+    newsMode = b.dataset.news;
+    $$("#newsToggle .ntog").forEach((x) => x.classList.toggle("active", x.dataset.news === newsMode));
+    renderNews();
+  }));
 
   // ---------- TEAM MANAGER ----------
   const manage = $("#sbManage"), mLeague = $("#sbmLeague"), mTeam = $("#sbmTeam");
@@ -580,21 +589,23 @@
     const my = ++newsToken;
     const head = $("#newsHead") || null;
     // sources: a single league when a league tab is active; otherwise everything you follow
-    let sources, scope;
-    if (view !== "mine") {
+    let sources, subText;
+    if (newsMode === "top") {
+      sources = SP.LEAGUES.filter((l) => TOP_LEAGUES.indexOf(l.league) >= 0).map((l) => ({ sport: l.sport, league: l.league }));
+      subText = "Top headlines across major leagues — newest first.";
+    } else if (view !== "mine") {
       const lg = SP.LEAGUES.find((l) => l.league === view);
       sources = lg ? [{ sport: lg.sport, league: lg.league }] : [];
-      scope = lg ? lg.label : "";
+      subText = lg ? `${lg.label} insider reports and breaking news — newest first.` : "";
     } else {
       const set = new Map();
       (state.teams || []).forEach((t) => set.set(t.league, { sport: t.sport, league: t.league }));
       (state.followLeagues || []).forEach((f) => { if (!set.has(f.league)) set.set(f.league, { sport: f.sport, league: f.league }); });
       if (!set.has("nfl")) set.set("nfl", { sport: "football", league: "nfl" });
       sources = Array.from(set.values()).slice(0, 5);
-      scope = "";
+      subText = "Insider reports and breaking news for the leagues you follow — newest first.";
     }
-    // reflect the scope in the section subtitle
-    const sub = $("#newsSub"); if (sub) sub.textContent = scope ? `${scope} insider reports and breaking news — newest first.` : "Insider reports and breaking news for the leagues you follow — newest first.";
+    const sub = $("#newsSub"); if (sub) sub.textContent = subText;
     if (!sources.length) { host.innerHTML = `<div class="ed-empty">Pick a league tab to see its news.</div>`; return; }
     host.innerHTML = `<div class="ed-empty">Loading the wire…</div>`;
     const lists = await Promise.all(sources.map((s) => SP.news(s.sport, s.league)));
