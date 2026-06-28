@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ONE — Deep work, made simple</title>
+<link rel="stylesheet" href="rouge.css" />
+<link rel="stylesheet" href="one.css" />
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<header class="nav" id="nav">
+  <div class="nav-brand">ONE</div>
+  <nav class="nav-links">
+    <a href="#manifesto">Why</a>
+    <a href="#feat">How</a>
+    <a href="#gallery">Modes</a>
+  </nav>
+  <a class="nav-cta" href="#cta">Download</a>
+</header>
+
+<main>
+
+  <!-- ============ HERO ============ -->
+  <section class="hero-track" data-nav="hero" data-screen-label="Hero">
+    <div class="hero-pin">
+      <div class="hero-red" id="heroRed"></div>
+      <div class="hero-content">
+        <div class="hero-kicker u-mono" id="heroKicker">ONE — Deep work, made simple</div>
+        <h1 class="hero-title" id="heroTitle">Your attention<br>is the whole game.</h1>
+
+        <div class="hero-statement" id="heroStatement">
+          <span class="mark">Focus.</span>
+          <span class="sub">One thing at a time. Nothing else.</span>
+        </div>
+
+        <div class="hero-product" id="heroProduct">
+          <div class="screen">
+            <div class="screen-top">
+              <div class="screen-dot"><i></i>Focus</div>
+              <div class="screen-time">2:41 pm</div>
+            </div>
+            <div class="screen-body">
+              <div class="screen-task">Write Q3 proposal</div>
+              <div class="screen-timer">24:13</div>
+              <div class="screen-state">Stay with it</div>
+            </div>
+            <div class="screen-bar"><i></i></div>
+            <div class="screen-foot"><div class="btn-ghost"></div><div class="btn-stop"></div></div>
+          </div>
+        </div>
+
+        <div class="scroll-hint" id="scrollHint">
+          Enter focus
+          <span class="bar"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MANIFESTO ============ -->
+  <section class="manifesto" id="manifesto" data-nav data-theme="on-dark" data-screen-label="Manifesto">
+    <div class="manifesto-pin">
+      <h2 class="manifesto-text" id="manifestoText">
+        Distraction is<br>the default.<br>Focus is a <em>decision</em>.
+      </h2>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="feat" id="feat" data-nav data-theme="on-light" data-screen-label="How">
+    <div class="feat-pin">
+      <div class="feat-visual">
+        <div class="feat-product" id="featProduct">
+          <div class="screen">
+            <div class="screen-top">
+              <div class="screen-dot"><i></i>Focus</div>
+              <div class="screen-time">9:02 am</div>
+            </div>
+            <div class="screen-body">
+              <div class="screen-task">Edit the deck</div>
+              <div class="screen-timer">48:00</div>
+              <div class="screen-state">Deep work</div>
+            </div>
+            <div class="screen-bar"><i></i></div>
+            <div class="screen-foot"><div class="btn-ghost"></div><div class="btn-stop"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="feat-list" id="featList">
+        <div class="feat-eyebrow u-mono">How it works</div>
+        <div class="feat-item">
+          <span class="feat-num">01 — Pick one</span>
+          <h3>Choose a single task.</h3>
+          <p>Type the one thing that matters right now. Everything else moves out of sight — your list can wait.</p>
+        </div>
+        <div class="feat-item">
+          <span class="feat-num">02 — Go red</span>
+          <h3>The screen turns to focus.</h3>
+          <p>Start a session and ONE floods red, silences notifications, and quietly blocks the apps you named.</p>
+        </div>
+        <div class="feat-item">
+          <span class="feat-num">03 — See it</span>
+          <h3>Watch the hours add up.</h3>
+          <p>Every session is logged, so at the end of the week you can see where your attention actually went.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MODES (horizontal) ============ -->
+  <section class="gallery" id="gallery" data-nav data-theme="on-light" data-screen-label="Modes">
+    <div class="gallery-pin">
+      <div class="gallery-head">
+        <h2>Find your mode.</h2>
+        <span class="count">06 ways to focus</span>
+      </div>
+      <div class="gallery-track" id="galleryTrack">
+        <div class="shade">
+          <div class="shade-swatch" style="background:#E8281E"><span class="num">25 / 5</span></div>
+          <div class="shade-meta"><div class="name">Deep Work</div><div class="desc">Long, unbroken stretches.</div></div>
+        </div>
+        <div class="shade">
+          <div class="shade-swatch" style="background:#FF362B"><span class="num">15 / 3</span></div>
+          <div class="shade-meta"><div class="name">Sprint</div><div class="desc">Short bursts, high heat.</div></div>
+        </div>
+        <div class="shade">
+          <div class="shade-swatch" style="background:#C8161B"><span class="num">50 / 10</span></div>
+          <div class="shade-meta"><div class="name">Writing</div><div class="desc">Words only. No tabs.</div></div>
+        </div>
+        <div class="shade">
+          <div class="shade-swatch" style="background:#9E1212"><span class="num">∞</span></div>
+          <div class="shade-meta"><div class="name">Study</div><div class="desc">Read, recall, repeat.</div></div>
+        </div>
+        <div class="shade">
+          <div class="shade-swatch" style="background:#D94A3D"><span class="num">10 / 2</span></div>
+          <div class="shade-meta"><div class="name">Wind-down</div><div class="desc">Ease out of the red.</div></div>
+        </div>
+        <div class="shade">
+          <div class="shade-swatch" style="background:#7A0E0E"><span class="num">+ / +</span></div>
+          <div class="shade-meta"><div class="name">Custom</div><div class="desc">Your rhythm, your rules.</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PARALLAX ============ -->
+  <section class="para" data-nav data-theme="on-dark" data-screen-label="Parallax">
+    <div class="para-word" id="paraWord">FOCUS</div>
+    <div class="para-product" id="paraProduct">
+      <div class="screen">
+        <div class="screen-top">
+          <div class="screen-dot"><i></i>Focus</div>
+          <div class="screen-time">4:18 pm</div>
+        </div>
+        <div class="screen-body">
+          <div class="screen-task">Read — chapter 4</div>
+          <div class="screen-timer">12:55</div>
+          <div class="screen-state">Almost there</div>
+        </div>
+        <div class="screen-bar"><i></i></div>
+        <div class="screen-foot"><div class="btn-ghost"></div><div class="btn-stop"></div></div>
+      </div>
+    </div>
+    <div class="para-caption" id="paraCaption">
+      <div class="big">Do less. Finish more.</div>
+      <div class="small">ONE · 2026</div>
+    </div>
+  </section>
+
+  <!-- ============ CTA + FOOTER ============ -->
+  <section class="cta" id="cta" data-nav data-theme="on-dark" data-screen-label="CTA">
+    <div class="cta-inner">
+      <h2 class="reveal">Start with one thing.</h2>
+      <p class="reveal">ONE turns your screen — and your attention — a single shade of red until the work is done. Free to start, no account needed.</p>
+      <a href="#" class="btn reveal">Get ONE — free</a>
+      <div class="fineprint reveal">iOS · macOS · Android</div>
+    </div>
+    <footer>
+      <div class="f-brand">ONE</div>
+      <nav>
+        <a href="#">Features</a>
+        <a href="#">Pricing</a>
+        <a href="#">Download</a>
+        <a href="#">Support</a>
+      </nav>
+      <div>© 2026 ONE</div>
+    </footer>
+  </section>
+
+</main>
+
+<script src="rouge.js"></script>
+</body>
+</html>

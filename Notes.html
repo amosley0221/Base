@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BASE — Notes</title>
+<script>try{if(localStorage.getItem('base_theme')==='dark')document.documentElement.classList.add('mode-dark');}catch(e){}</script>
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#E8281E" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="BASE" />
+<link rel="apple-touch-icon" href="icons/base-180.png" />
+<link rel="icon" href="icons/base-32.png" />
+<link rel="stylesheet" href="app.css" />
+<style>
+  .notes-board { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+  .ncard { padding: 22px; display: flex; flex-direction: column; gap: 12px; transition: box-shadow 0.3s var(--ease); }
+  .ncard:focus-within { box-shadow: var(--shadow-lg); }
+  .ncard .ntitle { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em; border: none; background: none; width: 100%; padding: 0; }
+  .ncard .ntitle:focus { outline: none; }
+  .ncard .nbody { border: none; background: none; resize: vertical; min-height: 120px; font-size: 15px; line-height: 1.55; color: var(--ink-soft); width: 100%; padding: 0; }
+  .ncard .nbody:focus { outline: none; }
+  .ncard .nfoot { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--edge-soft); padding-top: 12px; margin-top: auto; }
+  .ncard.is-red { background: var(--red); color: #fff; border-color: transparent; }
+  .ncard.is-red .ntitle, .ncard.is-red .nbody { color: #fff; }
+  .ncard.is-red .nbody::placeholder, .ncard.is-red .ntitle::placeholder { color: rgba(255,255,255,0.6); }
+  .ncard.is-red .nfoot { border-color: rgba(255,255,255,0.25); }
+  .swap { display: flex; gap: 7px; }
+  .swap button { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--edge); cursor: pointer; padding: 0; }
+  .swap .sw-paper { background: var(--paper); }
+  .swap .sw-red { background: var(--red); border-color: var(--red); }
+  .ncard.is-red .swap button { border-color: rgba(255,255,255,0.5); }
+  .add-note { border: 1.5px dashed var(--edge); background: transparent; border-radius: 20px; min-height: 200px; display: grid; place-items: center; cursor: pointer; color: var(--ink-faint); font-size: 15px; transition: all 0.25s var(--ease); }
+  .add-note:hover { border-color: var(--red); color: var(--red); }
+</style>
+</head>
+<body>
+
+<header class="nav nav--solid" id="nav">
+  <a class="nav-brand" href="Home.html"><span class="glyph"></span>BASE</a>
+  <div class="nav-right">
+    <a class="theme-toggle" href="Settings.html" data-cursor aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </a>
+    <button class="theme-toggle" data-theme-toggle data-cursor aria-label="Toggle dark mode">
+      <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+      <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg>
+    </button>
+  </div>
+</header>
+
+<a class="back-home" href="Home.html" data-cursor>← Home</a>
+
+<main class="editor">
+  <div class="editor-head">
+    <div class="eyebrow">Notes</div>
+    <h1>On your mind.</h1>
+    <p>Quick thoughts, goals, reminders. They scroll past on your Home page — mark one red to make it stand out.</p>
+  </div>
+  <div class="notes-board" id="board"></div>
+</main>
+
+<script src="store.js"></script>
+<script src="ui.js"></script>
+<script src="notes.js"></script>
+<script src="theme.js"></script>
+<script src="cursor.js"></script>
+<script src="pwa.js"></script>
+</body>
+</html>

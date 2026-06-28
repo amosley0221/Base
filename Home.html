@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BASE — Your homebase</title>
+<script>try{if(localStorage.getItem('base_theme')==='dark')document.documentElement.classList.add('mode-dark');}catch(e){}</script>
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#E8281E" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="BASE" />
+<link rel="apple-touch-icon" href="icons/base-180.png" />
+<link rel="icon" href="icons/base-32.png" />
+<link rel="stylesheet" href="app.css" />
+<link rel="stylesheet" href="home.css" />
+</head>
+<body>
+
+<nav class="dotnav" id="dotnav" aria-label="Sections"></nav>
+
+<header class="nav" id="nav">
+  <a class="nav-brand" href="Home.html"><span class="glyph"></span>BASE</a>
+  <div class="nav-right">
+    <a class="theme-toggle" href="Settings.html" data-cursor aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </a>
+    <button class="theme-toggle" data-theme-toggle data-cursor aria-label="Toggle dark mode">
+      <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+      <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============ HERO ============ -->
+  <section class="h-hero" data-nav="hero" data-label="Home" data-screen-label="Hero">
+    <div class="h-hero-pin">
+      <div class="h-hero-red" id="heroRed"></div>
+
+      <div class="h-hero-top" id="heroTop">
+        <div class="ht-left">
+          <h1 class="greet" id="greet">Good morning, Antonio.</h1>
+          <div class="date" id="date">Today</div>
+          <p class="preview" id="preview">Looking at your day…</p>
+        </div>
+        <div class="ht-weather" id="weather">
+          <div class="wx-icon" id="wxIcon"></div>
+          <div class="wx-temp" id="wxTemp">—°</div>
+          <div class="wx-cond" id="wxCond">Checking weather…</div>
+          <div class="wx-loc" id="wxLoc"></div>
+        </div>
+      </div>
+
+      <div class="h-hero-statement" id="heroStatement">
+        <div class="big">Here's your day.</div>
+        <div class="sub">One thing at a time</div>
+      </div>
+
+      <div class="h-today-card" id="todayCard">
+        <div class="today-card">
+          <div class="tc-top">
+            <div class="lbl"><i></i> Today</div>
+            <div class="day" id="tcDay">—</div>
+          </div>
+          <div class="tc-focus" id="tcFocus">—</div>
+          <div class="tc-stats" id="tcStats"></div>
+        </div>
+      </div>
+
+      <div class="scroll-hint" id="scrollHint">Scroll<span class="bar"></span></div>
+    </div>
+  </section>
+
+  <!-- ============ TOP TASKS ============ -->
+  <section class="tasks-wrap" data-nav data-theme="on-light" data-label="Focus" data-href="Plan.html" data-screen-label="Tasks">
+    <div class="sec">
+      <div class="sec-head reveal">
+        <div class="eyebrow">Today's focus</div>
+        <h2>Three things that matter.</h2>
+        <p class="lede">Keep the list short. Everything else can wait for tomorrow.</p>
+      </div>
+      <div class="tasks-grid reveal d1">
+        <div class="ring">
+          <svg viewBox="0 0 120 120">
+            <circle class="track" cx="60" cy="60" r="54"></circle>
+            <circle class="fill" id="ringFill" cx="60" cy="60" r="54"></circle>
+          </svg>
+          <div class="center"><div><div class="n" id="ringN">0/0</div><div class="k">done</div></div></div>
+        </div>
+        <div class="task-list" id="taskList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HABITS ============ -->
+  <section class="habits-wrap" data-nav data-theme="on-light" data-label="Habits" data-href="Plan.html" data-screen-label="Habits">
+    <div class="sec">
+      <div class="sec-head reveal">
+        <div class="eyebrow">Habits, gently</div>
+        <h2>Small things, kept up.</h2>
+        <p class="lede">Tap a day when you do it. The goal is showing up — not a perfect streak.</p>
+      </div>
+      <div class="habit-grid reveal d1" id="habitGrid"></div>
+    </div>
+  </section>
+
+  <!-- ============ NOTES (horizontal) ============ -->
+  <section class="notes-wrap" data-nav data-theme="on-light" data-label="Notes" data-href="Notes.html" data-screen-label="Notes">
+    <div class="notes-pin">
+      <div class="notes-head">
+        <div>
+          <div class="eyebrow">On your mind</div>
+          <h2>Notes to self.</h2>
+        </div>
+      </div>
+      <div class="notes-track" id="notesTrack"></div>
+    </div>
+  </section>
+
+  <!-- ============ WEEK (clickable days) ============ -->
+  <section class="week-wrap" data-nav data-theme="on-light" data-label="Your Week" data-href="Calendar.html" data-screen-label="Week">
+    <div class="sec">
+      <div class="sec-head reveal">
+        <div class="eyebrow">School, work &amp; rest</div>
+        <h2>Tap a day. See what's on it.</h2>
+        <p class="lede">Your classes render as code — fitting for a computer engineer. Work and rest sit right beside them.</p>
+      </div>
+      <div class="week-strip reveal d1" id="weekStrip"></div>
+      <div class="day-detail reveal d2">
+        <h3 class="dd-name" id="ddName">Today</h3>
+        <div class="dd-cols">
+          <div class="dd-group"><h3>School</h3><div id="ddSchool"></div></div>
+          <div class="dd-group"><h3>Work</h3><div id="ddWork"></div></div>
+          <div class="dd-group"><h3>Rest &amp; movement</h3><div id="ddRest"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCHOOL ============ -->
+  <section class="school-wrap" data-nav data-theme="on-light" data-label="School" data-href="School.html" data-screen-label="School">
+    <div class="sec">
+      <div class="sec-head reveal">
+        <div class="eyebrow">School</div>
+        <h2>GPA &amp; what's due.</h2>
+        <p class="lede">Where you stand this semester, and the assignments coming up — tap through for the full calculator.</p>
+      </div>
+      <div class="school-dash reveal d1">
+        <div class="sch-gpa">
+          <div class="sg-dial" id="sgDial"></div>
+          <div class="sg-stats" id="sgStats"></div>
+        </div>
+        <div class="sch-asgn">
+          <div class="sa-head">Upcoming assignments</div>
+          <div id="sgAsgn"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCOREBOARD ============ -->
+  <section class="scores-wrap" data-nav data-theme="on-light" data-label="Scoreboard" data-href="Scoreboard.html" data-screen-label="Scores">
+    <div class="sec">
+      <div class="sec-head reveal">
+        <div class="eyebrow">Your teams</div>
+        <h2>The scoreboard.</h2>
+        <p class="lede">Live scores and what's next — so you never miss a game on a study night.</p>
+      </div>
+      <div class="score-grid reveal d1" id="scoreGrid"></div>
+    </div>
+  </section>
+
+  <!-- ============ BUDGET ============ -->
+  <section class="budget-wrap" data-nav data-theme="on-light" data-label="Budget" data-href="Budget.html" data-screen-label="Budget">
+    <div class="sec">
+      <div class="sec-head reveal">
+        <div class="eyebrow">Money</div>
+        <h2>What's left this month.</h2>
+        <p class="lede">Two jobs in, the essentials out — and what stays for Vegas and everything else.</p>
+      </div>
+      <div class="budget-dash reveal d1">
+        <div class="bd-left">
+          <div class="bd-leftover">
+            <div class="bd-amount" id="bdLeft">$0</div>
+            <div class="bd-cap">left to spend / save</div>
+          </div>
+          <div class="bd-spark" id="bdSpark"></div>
+          <div class="bd-bar" id="bdBar"></div>
+          <div class="bd-io">
+            <div><span class="bd-k">In</span><span class="bd-v" id="bdIn">$0</span></div>
+            <div><span class="bd-k">Out</span><span class="bd-v" id="bdOut">$0</span></div>
+          </div>
+        </div>
+        <div class="bd-right" id="bdCats"></div>
+      </div>
+      <div class="bd-strip reveal d2" id="bdStrip"></div>
+    </div>
+  </section>
+
+  <!-- ============ CLOSE ============ -->
+  <section class="h-close" data-nav data-theme="on-dark" data-label="Wrap-up" data-screen-label="Close">
+    <div class="inner">
+      <h2 class="reveal">That's the plan.</h2>
+      <p class="reveal">You don't have to do it all at once. Pick the next thing, and let the rest stay where it is.</p>
+      <div class="actions reveal">
+        <a class="btn btn--light" href="Plan.html">Adjust today's plan</a>
+        <a class="btn btn--ghost" href="Calendar.html" style="color:#fff;border-color:rgba(255,255,255,0.5)">See the week</a>
+      </div>
+    </div>
+    <div class="h-foot">
+      <div class="fb">BASE</div>
+      <nav>
+        <a href="Plan.html">Plan</a>
+        <a href="Notes.html">Notes</a>
+        <a href="Calendar.html">Calendar</a>
+      </nav>
+      <div>Your day, kept simple.</div>
+    </div>
+  </section>
+
+</main>
+
+<script src="store.js"></script>
+<script src="sports.js"></script>
+<script src="home.js"></script>
+<script src="theme.js"></script>
+<script src="cursor.js"></script>
+<script src="pwa.js"></script>
+</body>
+</html>

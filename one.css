@@ -1,0 +1,58 @@
+/* ===========================================================
+   ONE — app-screen mockup (focus timer)
+   Scales to its container via container query units.
+   =========================================================== */
+.screen {
+  position: relative; width: 100%; height: 100%;
+  background: var(--white);
+  border-radius: 24px;
+  box-shadow:
+    0 40px 90px -28px rgba(40, 6, 4, 0.5),
+    0 8px 22px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  container-type: size;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  font-family: var(--font);
+}
+
+.screen-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8cqw 8cqw 0;
+}
+.screen-dot {
+  display: flex; align-items: center; gap: 3cqw;
+  font-size: 3.4cqw; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.screen-dot i {
+  width: 3cqw; height: 3cqw; border-radius: 50%;
+  background: var(--red); display: block;
+  box-shadow: 0 0 0 2.5cqw rgba(232, 40, 30, 0.14);
+}
+.screen-time { font-size: 3.4cqw; color: var(--ink-faint); font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
+
+.screen-body {
+  flex: 1; display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  padding: 0 8cqw; text-align: center;
+}
+.screen-task { font-size: 3.9cqw; color: var(--ink-soft); margin-bottom: 4cqw; letter-spacing: 0.01em; }
+.screen-timer {
+  font-size: 22cqw; font-weight: 700; letter-spacing: -0.05em;
+  color: var(--ink); font-variant-numeric: tabular-nums; line-height: 0.95;
+}
+.screen-state {
+  margin-top: 5cqw; font-size: 2.9cqw; letter-spacing: 0.24em;
+  text-transform: uppercase; color: var(--red);
+}
+
+.screen-bar {
+  height: 1.8cqw; border-radius: 100px; background: rgba(0, 0, 0, 0.07);
+  margin: 0 8cqw 6cqw; overflow: hidden;
+}
+.screen-bar i { display: block; height: 100%; width: 64%; background: var(--red); border-radius: 100px; }
+
+.screen-foot { display: flex; justify-content: center; align-items: center; gap: 6cqw; padding-bottom: 9cqw; }
+.screen-foot .btn-stop { width: 9cqw; height: 9cqw; border-radius: 28%; background: var(--red); }
+.screen-foot .btn-ghost { width: 9cqw; height: 9cqw; border-radius: 50%; border: 1.4px solid var(--edge); }
