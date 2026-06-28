@@ -16,6 +16,16 @@
   let pollTimer = null;
   let liveOpen = false;   // is a live game's box score open?
   let openGame = null;    // {id, sport, league}
+  let featToken = 0, featuredLive = false;
+
+  // leagues to pull current scores from = your teams' leagues + followed leagues
+  function followedLeaguesSb() {
+    const map = new Map();
+    (state.teams || []).forEach((t) => { if (!map.has(t.league)) map.set(t.league, SP.LEAGUES.find((l) => l.league === t.league) || { sport: t.sport, league: t.league, label: (t.league || "").toUpperCase() }); });
+    (state.followLeagues || []).forEach((f) => { if (!map.has(f.league)) map.set(f.league, SP.LEAGUES.find((l) => l.league === f.league) || { sport: f.sport, league: f.league, label: (f.league || "").toUpperCase() }); });
+    return Array.from(map.values()).slice(0, 4);
+  }
+  const ymd = (d) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
 
   const POLL_MS = 30000;
   const TABS = [{ key: "mine", label: "My Teams" }].concat(SP.LEAGUES.map((l) => ({ key: l.league, label: l.label, sport: l.sport })));
@@ -174,8 +184,38 @@
         ${clickable ? `<div class="g-foot"><span></span><span class="g-more">Box score →</span></div>` : ""}
       </div>`;
     }).join("");
-    setBody(`<h2 class="sb-section-title">Your teams</h2><div class="sb-games">${cards}</div>`);
-    return live;
+
+    // pull live + recently-ended games from followed leagues (today + yesterday), excluding my teams' games
+    const shown = new Set(results.filter((r) => r.chosen && r.chosen.id).map((r) => String(r.chosen.id)));
+    const leagues = followedLeaguesSb();
+    const yest = new Date(Date.now() - 86400000);
+    const boards = await Promise.all(leagues.flatMap((lg) => [
+      SP.leagueScoreboard(lg.sport, lg.league).then((g) => ({ lg, games: g })).catch(() => ({ lg, games: null })),
+      SP.leagueScoreboard(lg.sport, lg.league, ymd(yest)).then((g) => ({ lg, games: g })).catch(() => ({ lg, games: null })),
+    ]));
+    if (my !== token) return 0;
+    const liveGames = [], recentGames = [];
+    boards.forEach(({ lg, games }) => { if (!lg || !games) return; games.forEach((g) => {
+      if (!g.id || shown.has(String(g.id))) return;
+      if (g.state === "in") { shown.add(String(g.id)); liveGames.push({ g, lg }); }
+      else if (g.state === "post") { shown.add(String(g.id)); recentGames.push({ g, lg }); }
+    }); });
+    liveGames.sort((a, b) => a.g.date - b.g.date);
+    recentGames.sort((a, b) => b.g.date - a.g.date);
+
+    let extra = "";
+    if (liveGames.length) extra += `<h2 class="sb-section-title">Live now</h2><div class="sb-games">${liveGames.map((x) => gameCard(x.g, x.lg.sport, x.lg.league)).join("")}</div>`;
+    if (recentGames.length) extra += `<h2 class="sb-section-title">Recently ended</h2><div class="sb-games">${recentGames.slice(0, 8).map((x) => gameCard(x.g, x.lg.sport, x.lg.league)).join("")}</div>`;
+
+    setBody(`<h2 class="sb-section-title">Your teams</h2><div class="sb-games">${cards}</div>${extra}`);
+    // refresh the "Playing now" tile to reflect everything live in the feed
+    statCards([
+      { n: teams.length, k: "Teams tracked" },
+      { n: live + liveGames.length, k: "Playing now", live: (live + liveGames.length) > 0 },
+      { n: today, k: "Games today" },
+      { n: upcoming, k: "Coming up" },
+    ]);
+    return live + liveGames.length;
   }
 
   // ---------- LEAGUE ----------
@@ -303,13 +343,18 @@
   }
 
   // ---------- POLLING ----------
+  // Always re-poll so the featured game and scores stay current: 30s when
+  // anything is live, 2 min otherwise. Pauses while the tab is hidden.
   function schedulePoll(liveCount) {
     clearTimeout(pollTimer);
-    if (liveCount > 0) pollTimer = setTimeout(poll, POLL_MS);
+    pollTimer = setTimeout(poll, (liveCount > 0 || featuredLive) ? POLL_MS : 120000);
   }
   async function poll() {
     if (document.hidden) { pollTimer = setTimeout(poll, POLL_MS); return; }
-    const live = await (view === "mine" ? renderMine(true) : renderLeague(view, true));
+    const [live] = await Promise.all([
+      (view === "mine" ? renderMine(true) : renderLeague(view, true)),
+      renderFeatured(true),
+    ]);
     if (liveOpen && openGame) loadBox();   // refresh the open box score too
     schedulePoll(live);
   }
@@ -318,7 +363,10 @@
   // ---------- dispatch ----------
   async function render() {
     clearTimeout(pollTimer);
-    const live = await (view === "mine" ? renderMine(false) : renderLeague(view, false));
+    const [live] = await Promise.all([
+      (view === "mine" ? renderMine(false) : renderLeague(view, false)),
+      renderFeatured(false),
+    ]);
     schedulePoll(live);
   }
 
@@ -378,29 +426,59 @@
   const parseNum = (v) => { if (v == null) return null; const m = String(v).match(/-?\d+(\.\d+)?/); return m ? parseFloat(m[0]) : null; };
 
   // ---------- FEATURED GAME CENTER ----------
-  let clockTimer = null;
-  async function renderFeatured() {
-    const host = $("#sbFeatured"); const marker = $("#featuredMarker");
-    const teams = state.teams || [];
-    if (!teams.length) { marker.hidden = true; host.innerHTML = ""; return; }
-    host.innerHTML = `<div class="ed-empty">Loading your team's game…</div>`;
-    const results = await Promise.all(teams.map((t) => SP.teamGame(t)));
-    const withGame = results.filter((r) => r.chosen && r.chosen.id);
-    if (!withGame.length) { marker.hidden = true; host.innerHTML = ""; return; }
-    const pick = withGame.find((r) => r.chosen.state === "in") || withGame.find((r) => r.chosen.state === "post") || withGame.find((r) => r.chosen.state === "pre") || withGame[0];
-    const team = pick.team;
-    const sum = await SP.gameSummary(team.sport, team.league, pick.chosen.id);
-    marker.hidden = false;
-    scanReveals(marker);
-    if (!sum) { host.innerHTML = `<div class="ed-empty">Game details aren't available right now — check back when you're online.</div>`; return; }
-    host.innerHTML = gameCenter(sum, team, pick.chosen.home);
-    scanReveals(host);
-    // live clock
-    clearInterval(clockTimer);
-    if (sum.state === "in" && sum.detail) {
-      const clk = $("#gcClock");
-      if (clk) { let base = sum.detail; clk.textContent = base; }
+  // reflects the active tab: on "My Teams" → your most current game (live >
+  // recent final > any live league game > next up); on a league tab → that
+  // league's most relevant game. Re-runs on tab change and the poll.
+  async function firstLiveLeagueGame() {
+    const leagues = followedLeaguesSb();
+    const boards = await Promise.all(leagues.map((lg) => SP.leagueScoreboard(lg.sport, lg.league).then((g) => ({ lg, games: g })).catch(() => ({ lg, games: null }))));
+    for (const { lg, games } of boards) { if (lg && games) for (const g of games) if (g.state === "in" && g.id) return { sport: lg.sport, league: lg.league, id: g.id, label: lg.label }; }
+    return null;
+  }
+  async function renderFeatured(silent) {
+    const host = $("#sbFeatured"), marker = $("#featuredMarker");
+    const my = ++featToken;
+    if (!silent) host.innerHTML = `<div class="ed-empty">Loading the featured game…</div>`;
+    let sport, league, id, team = { name: "", league: "" }, isHome = false;
+
+    if (view === "mine") {
+      const teams = state.teams || [];
+      if (!teams.length) { marker.hidden = true; host.innerHTML = ""; featuredLive = false; return; }
+      const results = await Promise.all(teams.map((t) => SP.teamGame(t)));
+      if (my !== featToken) return;
+      const withGame = results.filter((r) => r.chosen && r.chosen.id);
+      const now = Date.now(), RECENT = 36 * 3600 * 1000;
+      let pick = withGame.find((r) => r.chosen.state === "in")
+        || withGame.filter((r) => r.chosen.state === "post" && r.chosen.date && now - r.chosen.date.getTime() <= RECENT).sort((a, b) => b.chosen.date - a.chosen.date)[0];
+      if (!pick) {
+        const lv = await firstLiveLeagueGame();                 // no current team game → show any live league game
+        if (my !== featToken) return;
+        if (lv) { sport = lv.sport; league = lv.league; id = lv.id; team = { name: "", league: lv.label }; }
+      }
+      if (!id && !pick) {
+        pick = withGame.filter((r) => r.chosen.state === "pre").sort((a, b) => a.chosen.date - b.chosen.date)[0]
+          || withGame.filter((r) => r.chosen.state === "post").sort((a, b) => b.chosen.date - a.chosen.date)[0]
+          || withGame[0];
+      }
+      if (pick) { sport = pick.team.sport; league = pick.team.league; id = pick.chosen.id; team = pick.team; isHome = pick.chosen.home; }
+    } else {
+      const lg = SP.LEAGUES.find((l) => l.league === view);
+      if (!lg) { marker.hidden = true; host.innerHTML = ""; featuredLive = false; return; }
+      const games = await SP.leagueScoreboard(lg.sport, lg.league);
+      if (my !== featToken) return;
+      const order = { in: 0, post: 1, pre: 2 };
+      const g = (games || []).slice().sort((a, b) => (order[a.state] - order[b.state]) || (a.state === "pre" ? a.date - b.date : b.date - a.date))[0];
+      if (g && g.id) { sport = lg.sport; league = lg.league; id = g.id; team = { name: "", league: lg.label }; }
     }
+
+    if (!id) { marker.hidden = true; if (!silent) host.innerHTML = ""; featuredLive = false; return; }
+    const sum = await SP.gameSummary(sport, league, id);
+    if (my !== featToken) return;
+    marker.hidden = false; scanReveals(marker);
+    if (!sum) { if (!silent) host.innerHTML = `<div class="ed-empty">Game details aren't available right now — check back when you're online.</div>`; featuredLive = false; return; }
+    host.innerHTML = gameCenter(sum, team, isHome);
+    scanReveals(host);
+    featuredLive = sum.state === "in";
   }
 
   function sideMark(t) {
@@ -539,7 +617,6 @@
 
   // initial reveal scan for the static markers
   scanReveals(document);
-  render();
-  renderFeatured();
+  render();        // also renders the featured game (view-aware)
   renderNews();
 })();

@@ -106,10 +106,10 @@ window.Sports = (function () {
     return "";
   }
 
-  // Today's full scoreboard for a league
-  async function leagueScoreboard(sport, league) {
+  // Full scoreboard for a league (optional dates = "YYYYMMDD" for a specific day)
+  async function leagueScoreboard(sport, league, dates) {
     try {
-      const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard`;
+      const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard${dates ? "?dates=" + dates : ""}`;
       const d = await (await fetch(url)).json();
       const games = (d.events || []).map((ev) => {
         const comp = ev.competitions && ev.competitions[0];
