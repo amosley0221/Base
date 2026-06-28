@@ -251,3 +251,9 @@ html.mode-dark .sb-modal-scrim { background: rgba(0,0,0,0.7); }
 .sbm-lchip:hover { border-color: var(--red); color: var(--red); }
 .sbm-lchip.on { background: var(--red); border-color: var(--red); color: #fff; }
 .sbm-league-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+/* clickable news article */
+a.npost-link { text-decoration: none; color: inherit; display: block; }
+a.npost-link:hover .nbody b { color: var(--red); }
+a.npost-link:hover .nread { text-decoration: underline; }
+.nread { color: var(--red); font-weight: 600; }

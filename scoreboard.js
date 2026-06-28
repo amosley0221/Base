@@ -363,6 +363,7 @@
   // ---------- dispatch ----------
   async function render() {
     clearTimeout(pollTimer);
+    renderNews();   // filter the wire to the active tab
     const [live] = await Promise.all([
       (view === "mine" ? renderMine(false) : renderLeague(view, false)),
       renderFeatured(false),
@@ -573,20 +574,34 @@
 
   // ---------- BREAKING NEWS ----------
   const INSIDERS = ["schefter", "wojnarowski", "woj", "shams", "charania", "passan", "rosenthal", "lowe", "fowler", "rapoport", "garafolo"];
+  let newsToken = 0;
   async function renderNews() {
-    const host = $("#sbNews");
+    const host = $("#sbNews"); if (!host) return;
+    const my = ++newsToken;
+    const head = $("#newsHead") || null;
+    // sources: a single league when a league tab is active; otherwise everything you follow
+    let sources, scope;
+    if (view !== "mine") {
+      const lg = SP.LEAGUES.find((l) => l.league === view);
+      sources = lg ? [{ sport: lg.sport, league: lg.league }] : [];
+      scope = lg ? lg.label : "";
+    } else {
+      const set = new Map();
+      (state.teams || []).forEach((t) => set.set(t.league, { sport: t.sport, league: t.league }));
+      (state.followLeagues || []).forEach((f) => { if (!set.has(f.league)) set.set(f.league, { sport: f.sport, league: f.league }); });
+      if (!set.has("nfl")) set.set("nfl", { sport: "football", league: "nfl" });
+      sources = Array.from(set.values()).slice(0, 5);
+      scope = "";
+    }
+    // reflect the scope in the section subtitle
+    const sub = $("#newsSub"); if (sub) sub.textContent = scope ? `${scope} insider reports and breaking news — newest first.` : "Insider reports and breaking news for the leagues you follow — newest first.";
+    if (!sources.length) { host.innerHTML = `<div class="ed-empty">Pick a league tab to see its news.</div>`; return; }
     host.innerHTML = `<div class="ed-empty">Loading the wire…</div>`;
-    // leagues: followed + always NFL (insider breaking news)
-    const set = new Map();
-    (state.teams || []).forEach((t) => set.set(t.league, { sport: t.sport, league: t.league }));
-    (state.followLeagues || []).forEach((f) => { if (!set.has(f.league)) set.set(f.league, { sport: f.sport, league: f.league }); });
-    if (!set.has("nfl")) set.set("nfl", { sport: "football", league: "nfl" });
-    const sources = Array.from(set.values()).slice(0, 5);
     const lists = await Promise.all(sources.map((s) => SP.news(s.sport, s.league)));
+    if (my !== newsToken) return;                       // a newer tab won
     let items = [];
     lists.forEach((l) => { if (l) items = items.concat(l); });
     if (!items.length) { host.innerHTML = `<div class="ed-empty">The wire is quiet right now — live news needs a connection. Check back when you're online.</div>`; return; }
-    // dedup + sort
     const seen = new Set();
     items = items.filter((x) => { const k = x.headline.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
     items.sort((a, b) => new Date(b.published) - new Date(a.published));
@@ -602,15 +617,17 @@
       const breaking = insider || ageH < 3;
       const verif = insider ? `<svg class="verif" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1l2.6 1.9 3.2-.2 1 3 2.6 1.8-1 3 1 3-2.6 1.8-1 3-3.2-.2L12 23l-2.6-1.9-3.2.2-1-3L2.6 16.5l1-3-1-3 2.6-1.8 1-3 3.2.2L12 1z"/><path d="M10.8 14.6 8.4 12.2l-1.1 1.1 3.5 3.5 6-6-1.1-1.1z" fill="#fff"/></svg>` : "";
       const body = `<b>${esc(it.headline)}</b>${it.desc ? " — " + esc(it.desc) : ""}`;
-      return `<article class="npost reveal">
+      const tag = it.link ? "a" : "article";
+      const href = it.link ? ` href="${esc(it.link)}" target="_blank" rel="noopener" data-cursor` : "";
+      return `<${tag} class="npost reveal${it.link ? " npost-link" : ""}"${href}>
         <div class="npost-head">
           <div class="avatar ${insider ? "ins" : ""}">${esc(author[0] || "E")}</div>
           <div><div class="nn">${esc(author)} ${verif}</div><div class="nh">${esc(handle)}</div></div>
           <div class="ntime">${breaking ? `<span class="brk"><i></i>BREAKING</span> ` : ""}${relTime(it.published)}</div>
         </div>
         <div class="nbody">${body}</div>
-        <div class="nleague">${esc((it.league || "").toUpperCase())}</div>
-      </article>`;
+        <div class="nleague">${esc((it.league || "").toUpperCase())}${it.link ? ` · <span class="nread">Read full article ↗</span>` : ""}</div>
+      </${tag}>`;
     }).join("");
     scanReveals(host);
   }
