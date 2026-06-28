@@ -211,9 +211,11 @@ ${items}
     else { tag = `<span class="sc-tag">NEXT</span>`; main = `<span class="sc-vs">${vs}</span> ${esc(g.opp)}`; sub = fmtGameTime(g.date); }
     return `<div class="sc-head"><div class="sc-team">${esc(t.name)}</div>${tag}</div><div class="sc-line">${main}</div><div class="sc-sub">${sub}</div>`;
   }
-  // recency: Home never shows a final older than this
-  const RECENT_MS = 2 * 86400000; // 2 days
+  // recency: Home never shows a final older than this, nor an upcoming game further out than SOON
+  const RECENT_MS = 2 * 86400000;   // 2 days
+  const SOON_MS = 14 * 86400000;    // 2 weeks
   function recent(date) { return date && (Date.now() - date.getTime()) <= RECENT_MS; }
+  function soon(date) { return date && (date.getTime() - Date.now()) <= SOON_MS; }
   function relAgo(date) {
     const d = Math.floor((Date.now() - date.getTime()) / 86400000);
     return d <= 0 ? "today" : d === 1 ? "yesterday" : d + "d ago";
@@ -230,29 +232,36 @@ ${items}
     const tag = live ? `<span class="sc-tag live">LIVE</span>` : `<span class="sc-tag">FINAL</span>`;
     const sub = live ? (game.detail || "In progress") : ("Final · " + relAgo(game.date));
     const as = a.score != null ? a.score : "", hs = h.score != null ? h.score : "";
-    return `<div class="score-card"><div class="sc-head"><div class="sc-team">${esc(lg.label)}</div>${tag}</div>
+    const attrs = game.id ? ` data-eid="${esc(game.id)}" data-sport="${esc(lg.sport)}" data-league="${esc(lg.league)}"` : "";
+    return `<div class="score-card"${attrs}><div class="sc-head"><div class="sc-team">${esc(lg.label)}</div>${tag}</div>
       <div class="sc-line">${esc(a.abbr || a.name || "")} <b>${as}</b>–<b>${hs}</b> ${esc(h.abbr || h.name || "")}</div>
       <div class="sc-sub">${sub}</div></div>`;
   }
 
+  let scoreToken = 0, scoreTimer = null, scoreLive = false;
   async function renderScores() {
     const grid = $("#scoreGrid");
     const teams = state.teams || [], leagues = followedLeagues();
     if (!teams.length && !leagues.length) { grid.innerHTML = `<p class="muted">No teams yet — add some on the Scoreboard page.</p>`; return; }
-    grid.innerHTML = `<div class="score-card"><div class="sc-line muted">Loading live scores…</div></div>`;
+    const mine = ++scoreToken;                                  // cancels older in-flight refreshes
+    if (!grid.children.length) grid.innerHTML = `<div class="score-card"><div class="sc-line muted">Loading live scores…</div></div>`;
     const MAX = 6;
 
-    // your teams' games — but drop finals older than 2 days
+    // your teams' games — drop finals >2 days old and games >2 weeks out
     const results = await Promise.all(teams.map((t) => window.Sports.teamGame(t)));
+    if (mine !== scoreToken) return;
     sportsToday = [];
     const teamCards = [], usedIds = new Set();
     results.forEach((res) => {
       if (res.todayGame) sportsToday.push({ team: res.team.name, time: res.todayGame.date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }), live: res.todayGame.state === "in" });
       const g = res.chosen;
-      if (!g || (g.state === "post" && !recent(g.date))) return; // stale final → skip, backfill below
-      if (g.id) usedIds.add(String(g.id));
+      if (!g) return;
+      if (g.state === "post" && !recent(g.date)) return;        // stale final → skip
+      if (g.state === "pre" && !soon(g.date)) return;           // >2 weeks out → skip
       const rank = g.state === "in" ? 0 : g.state === "post" ? 1 : 2;
-      teamCards.push({ rank, date: g.date, html: `<div class="score-card">${scoreCard(res)}</div>` });
+      const attrs = g.id ? ` data-eid="${esc(g.id)}" data-sport="${esc(res.team.sport)}" data-league="${esc(res.team.league)}"` : "";
+      if (g.id) usedIds.add(String(g.id));
+      teamCards.push({ rank, date: g.date, html: `<div class="score-card"${attrs}>${scoreCard(res)}</div>` });
     });
     teamCards.sort((a, b) => a.rank - b.rank || (a.rank === 2 ? a.date - b.date : b.date - a.date));
 
@@ -260,6 +269,7 @@ ${items}
     const leagueCards = [];
     if (teamCards.length < MAX) {
       const boards = await Promise.all(leagues.map((lg) => window.Sports.leagueScoreboard(lg.sport, lg.league).then((g) => ({ lg, games: g })).catch(() => ({ lg, games: null }))));
+      if (mine !== scoreToken) return;
       boards.forEach(({ lg, games }) => (games || []).forEach((game) => {
         const live = game.state === "in", recentFinal = game.state === "post" && recent(game.date);
         if (!live && !recentFinal) return;
@@ -273,7 +283,59 @@ ${items}
     const cards = teamCards.concat(leagueCards).slice(0, MAX);
     grid.innerHTML = cards.length ? cards.map((c) => c.html).join("")
       : `<div class="score-card"><div class="sc-line muted">No live or recent games right now.</div></div>`;
+    $$("#scoreGrid .score-card[data-eid]").forEach((c) => c.addEventListener("click", () => openGame(c.dataset.eid, c.dataset.sport, c.dataset.league)));
+    scoreLive = cards.some((c) => c.rank === 0);
+    scheduleScores();
     renderPreview();
+  }
+  // auto-refresh: poll every 30s while a game is live, else every 5 min; pause when the tab is hidden
+  function scheduleScores() {
+    clearTimeout(scoreTimer);
+    scoreTimer = setTimeout(() => { if (document.hidden) { scheduleScores(); return; } renderScores(); }, scoreLive ? 30000 : 300000);
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) renderScores(); });
+
+  // ---------- BOX SCORE (tap a game on Home) ----------
+  function boxHTML(sum) {
+    const a = sum.away, h = sum.home;
+    const tag = sum.state === "in" ? `<span class="sc-tag live">LIVE</span>` : sum.state === "post" ? `<span class="sc-tag">FINAL</span>` : `<span class="sc-tag">NEXT</span>`;
+    const sc = (v) => (v == null || v === "") ? "–" : esc(v);
+    let html = `<div class="hg-top">
+      <div class="hg-team"><div class="hg-abbr">${esc(a.abbr || a.name)}</div><div class="hg-tn">${esc(a.name)}</div>${a.record ? `<div class="hg-rec">${esc(a.record)}</div>` : ""}</div>
+      <div class="hg-score">${sc(a.score)}<span class="hg-dash">–</span>${sc(h.score)}</div>
+      <div class="hg-team home"><div class="hg-abbr">${esc(h.abbr || h.name)}</div><div class="hg-tn">${esc(h.name)}</div>${h.record ? `<div class="hg-rec">${esc(h.record)}</div>` : ""}</div>
+    </div>
+    <div class="hg-status">${tag} ${esc(sum.detail || "")}</div>`;
+    if (sum.periods && sum.periods.length) {
+      const head = sum.periods.map((p) => `<th>${esc(p)}</th>`).join("");
+      const row = (s) => `<tr><td>${esc(s.abbr || s.name)}</td>${sum.periods.map((_, i) => `<td>${esc(s.linescores[i] != null ? s.linescores[i] : "·")}</td>`).join("")}<td class="t">${esc(s.score != null ? s.score : "")}</td></tr>`;
+      html += `<div class="hg-lines"><table><thead><tr><th></th>${head}<th>T</th></tr></thead><tbody>${row(a)}${row(h)}</tbody></table></div>`;
+    }
+    if (sum.teamStats && sum.teamStats.length) {
+      html += `<div class="hg-sec">Team stats</div>` + sum.teamStats.map((s) => `<div class="hg-cmp"><span class="cv">${esc(s.away)}</span><span class="cl">${esc(s.label)}</span><span class="cv h">${esc(s.home)}</span></div>`).join("");
+    }
+    if (sum.leaders && sum.leaders.length) {
+      html += `<div class="hg-sec">Game leaders</div>` + sum.leaders.map((l) => `<div class="hg-lead"><span class="ll">${esc(l.cat)}</span><span class="lw">${esc(l.who || "—")}</span><span class="lt">${esc(l.team || "")}</span><span class="lv">${esc(l.val || "")}</span></div>`).join("");
+    }
+    return html;
+  }
+  const gModal = $("#homeGameModal"), gBody = $("#homeGameBody");
+  let gInfo = null, gTimer = null, gToken = 0;
+  async function openGame(eid, sport, league, silent) {
+    if (!gModal) return;
+    clearTimeout(gTimer);
+    gInfo = { eid, sport, league };
+    const mine = ++gToken;
+    if (!silent) { gBody.innerHTML = `<div class="hg-load">Loading the box score…</div>`; gModal.hidden = false; document.body.classList.add("modal-open"); }
+    const sum = await window.Sports.gameSummary(sport, league, eid);
+    if (mine !== gToken || !gInfo) return;
+    gBody.innerHTML = sum ? boxHTML(sum) : `<div class="hg-load">Couldn't load this game's stats — live data needs a connection.</div>`;
+    if (sum && sum.state === "in") gTimer = setTimeout(() => { if (!document.hidden && gInfo) openGame(eid, sport, league, true); }, 30000); // live box score refreshes
+  }
+  function closeGame() { if (gModal) { gModal.hidden = true; document.body.classList.remove("modal-open"); } gInfo = null; clearTimeout(gTimer); }
+  if (gModal) {
+    gModal.addEventListener("click", (e) => { if (e.target.closest("[data-gclose]")) closeGame(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !gModal.hidden) closeGame(); });
   }
 
   // ---------- BUDGET ----------

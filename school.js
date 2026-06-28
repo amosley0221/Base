@@ -162,8 +162,8 @@
     $("#asgnList").innerHTML = sorted.length ? sorted.map((a) => `
       <div class="asgn-row ${a.done ? "done" : ""}" data-id="${a.id}">
         <div class="check ${a.done ? "on" : ""}" role="button" title="mark done"></div>
-        <div class="row-main"><div class="at">${esc(a.title)}${a.type === "essay" ? ` <span class="asgn-tag${a.draft ? " has" : ""}">${a.draft ? "draft saved" : "essay"}</span>` : ""}</div>${a.course ? `<div class="acourse">${esc(a.course)}</div>` : ""}</div>
-        ${a.type === "essay" ? `<button class="asgn-ai" data-ai title="Draft with AI">✎ Draft</button>` : ""}
+        <div class="row-main"><div class="at">${esc(a.title)}${a.type ? ` <span class="asgn-tag t-${esc(a.type)}${(a.draft && writeable(a)) ? " has" : ""}">${(a.draft && writeable(a)) ? "draft saved" : esc(a.type)}</span>` : ""}</div>${a.course ? `<div class="acourse">${esc(a.course)}</div>` : ""}</div>
+        ${writeable(a) ? `<button class="asgn-ai" data-ai title="Draft with AI">✎ Draft</button>` : ""}
         ${dueChip(a.due)}
         <button class="del" title="delete">×</button>
       </div>`).join("") : `<p class="muted">Nothing due. Enjoy the breather.</p>`;
@@ -196,10 +196,11 @@
     if (!sc.assignments) sc.assignments = [];
     sc.assignments.push({ id: S.uid("as"), title, course, due, done: false, type, notes: "" });
     $("#aTitle").value = ""; $("#aCourse").value = ""; $("#aDue").value = ""; if ($("#aType")) $("#aType").value = "task";
-    persist(); renderAsgn(); toast(type === "essay" ? "Essay added — hit Draft" : "Assignment added");
+    persist(); renderAsgn(); toast((type === "essay" || type === "discussion") ? "Added — hit Draft for an AI draft" : "Assignment added");
   });
 
   // ---------- ESSAY ASSISTANT (AI draft) ----------
+  function writeable(a) { return a && (a.type === "essay" || a.type === "discussion"); }
   const eModal = $("#essayModal");
   let essayA = null, essayCtrl = null;
   function eStatus(msg, cls) { const s = $("#emStatus"); if (s) { s.textContent = msg || ""; s.className = "em-status" + (cls ? " " + cls : ""); } }
@@ -229,7 +230,7 @@
       essayCtrl = new AbortController();
       try {
         await window.BaseAI.draftEssay(
-          { title: essayA.title, course: essayA.course, notes },
+          { title: essayA.title, course: essayA.course, notes, type: essayA.type },
           (chunk) => { draft.value += chunk; draft.scrollTop = draft.scrollHeight; },
           essayCtrl.signal
         );
@@ -248,10 +249,37 @@
       try { await navigator.clipboard.writeText($("#emDraft").value); eStatus("Copied.", "ok"); }
       catch (e) { eStatus("Couldn't copy.", "warn"); }
     });
+    $("#emDownload").addEventListener("click", () => {
+      const text = $("#emDraft").value.trim();
+      if (!text) { eStatus("Nothing to download yet.", "warn"); return; }
+      window.BaseAI.downloadDoc((essayA && essayA.title) || "Draft", text); eStatus("Downloaded .doc", "ok");
+    });
     $("#emSave").addEventListener("click", () => {
       if (essayA) { essayA.draft = $("#emDraft").value; essayA.notes = $("#emNotes").value; persist(); }
       toast("Draft saved"); closeEssay();
     });
+    // revise bar — shorten / expand / formal / simpler / fix grammar
+    $$("#emRevise .rev-btn").forEach((b) => b.addEventListener("click", () => runRevise(b.dataset.revise)));
+  }
+  function reviseDisabled(d) { $$("#emRevise .rev-btn").forEach((b) => (b.disabled = d)); }
+  async function runRevise(action) {
+    if (!(window.BaseAI && window.BaseAI.hasKey())) { eStatus("Add your API key on Settings first.", "warn"); return; }
+    const draft = $("#emDraft"), text = draft.value.trim();
+    if (!text) { eStatus("Generate or write a draft first.", "warn"); return; }
+    const gen = $("#emGenerate"), stop = $("#emStop"), prev = draft.value;
+    gen.disabled = true; stop.hidden = false; reviseDisabled(true); eStatus(window.BaseAI.reviseLabel(action) + "…");
+    essayCtrl = new AbortController(); draft.value = "";
+    try {
+      await window.BaseAI.revise(action, text, { title: essayA && essayA.title }, (chunk) => { draft.value += chunk; draft.scrollTop = draft.scrollHeight; }, essayCtrl.signal);
+      if (essayA) { essayA.draft = draft.value; persist(); }
+      eStatus("Updated — revise more or save.", "ok");
+    } catch (e) {
+      draft.value = prev;                                   // keep their work on stop/error
+      if (e && e.name === "AbortError") eStatus("Stopped.");
+      else eStatus((e && e.message) || "Something went wrong.", "warn");
+    } finally {
+      gen.disabled = false; stop.hidden = true; reviseDisabled(false); essayCtrl = null;
+    }
   }
 
   // ---------- SLIDERS ----------
