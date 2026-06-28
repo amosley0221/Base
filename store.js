@@ -173,13 +173,13 @@
         { id: "p4", name: "Computer Organization", credits: 3, grade: "A-" },
         { id: "p5", name: "Technical Writing", credits: 3, grade: "A" },
       ],
-      // upcoming coursework. due = ISO date
+      // upcoming coursework. due = ISO date. type: "task" | "essay". notes feed the AI draft.
       assignments: [
-        { id: "as1", title: "Data Structures — PS2", course: "Data Structures", due: isoInDays(1), done: false },
-        { id: "as2", title: "Calc III quiz", course: "Calculus III", due: isoInDays(2), done: false },
-        { id: "as3", title: "Circuits lab report", course: "Circuits I", due: isoInDays(4), done: false },
-        { id: "as4", title: "Tech Writing draft", course: "Technical Writing", due: isoInDays(6), done: false },
-        { id: "as5", title: "Computer Org midterm", course: "Computer Organization", due: isoInDays(9), done: false },
+        { id: "as1", title: "Data Structures — PS2", course: "Data Structures", due: isoInDays(1), done: false, type: "task", notes: "" },
+        { id: "as2", title: "Calc III quiz", course: "Calculus III", due: isoInDays(2), done: false, type: "task", notes: "" },
+        { id: "as3", title: "Circuits lab report", course: "Circuits I", due: isoInDays(4), done: false, type: "task", notes: "" },
+        { id: "as4", title: "Tech Writing essay", course: "Technical Writing", due: isoInDays(6), done: false, type: "essay", notes: "Argumentative essay, ~1000 words. Thesis: ethical engineering requires public-facing communication, not just technical correctness. Use the Hyatt walkway collapse and the Challenger O-ring memo as examples. Formal tone. APA-ish citations — leave [cite] placeholders." },
+        { id: "as5", title: "Computer Org midterm", course: "Computer Organization", due: isoInDays(9), done: false, type: "task", notes: "" },
       ],
     },
   };

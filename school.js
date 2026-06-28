@@ -162,7 +162,8 @@
     $("#asgnList").innerHTML = sorted.length ? sorted.map((a) => `
       <div class="asgn-row ${a.done ? "done" : ""}" data-id="${a.id}">
         <div class="check ${a.done ? "on" : ""}" role="button" title="mark done"></div>
-        <div class="row-main"><div class="at">${esc(a.title)}</div>${a.course ? `<div class="acourse">${esc(a.course)}</div>` : ""}</div>
+        <div class="row-main"><div class="at">${esc(a.title)}${a.type === "essay" ? ` <span class="asgn-tag${a.draft ? " has" : ""}">${a.draft ? "draft saved" : "essay"}</span>` : ""}</div>${a.course ? `<div class="acourse">${esc(a.course)}</div>` : ""}</div>
+        ${a.type === "essay" ? `<button class="asgn-ai" data-ai title="Draft with AI">✎ Draft</button>` : ""}
         ${dueChip(a.due)}
         <button class="del" title="delete">×</button>
       </div>`).join("") : `<p class="muted">Nothing due. Enjoy the breather.</p>`;
@@ -170,6 +171,8 @@
       const a = sc.assignments.find((x) => x.id === row.dataset.id);
       row.querySelector(".check").addEventListener("click", () => { a.done = !a.done; persist(); renderAsgn(); });
       row.querySelector(".del").addEventListener("click", () => { sc.assignments = sc.assignments.filter((x) => x.id !== a.id); persist(); renderAsgn(); toast("Removed"); });
+      const ai = row.querySelector("[data-ai]");
+      if (ai) ai.addEventListener("click", () => openEssay(a));
     });
   }
 
@@ -188,11 +191,68 @@
   });
   $("#addAsgn").addEventListener("click", () => {
     const title = $("#aTitle").value.trim(), course = $("#aCourse").value.trim(), due = $("#aDue").value;
+    const type = ($("#aType") && $("#aType").value) || "task";
     if (!title || !due) { toast("Add a title and due date"); return; }
     if (!sc.assignments) sc.assignments = [];
-    sc.assignments.push({ id: S.uid("as"), title, course, due, done: false });
-    $("#aTitle").value = ""; $("#aCourse").value = ""; $("#aDue").value = ""; persist(); renderAsgn(); toast("Assignment added");
+    sc.assignments.push({ id: S.uid("as"), title, course, due, done: false, type, notes: "" });
+    $("#aTitle").value = ""; $("#aCourse").value = ""; $("#aDue").value = ""; if ($("#aType")) $("#aType").value = "task";
+    persist(); renderAsgn(); toast(type === "essay" ? "Essay added — hit Draft" : "Assignment added");
   });
+
+  // ---------- ESSAY ASSISTANT (AI draft) ----------
+  const eModal = $("#essayModal");
+  let essayA = null, essayCtrl = null;
+  function eStatus(msg, cls) { const s = $("#emStatus"); if (s) { s.textContent = msg || ""; s.className = "em-status" + (cls ? " " + cls : ""); } }
+  function openEssay(a) {
+    essayA = a;
+    $("#emTitle").textContent = a.title || "Essay";
+    $("#emCourse").textContent = a.course || "";
+    $("#emNotes").value = a.notes || "";
+    $("#emDraft").value = a.draft || "";
+    const ready = !!(window.BaseAI && window.BaseAI.hasKey());
+    eStatus(ready ? "" : "Add your Anthropic API key on Settings to generate a draft.", ready ? "" : "warn");
+    eModal.hidden = false; document.body.classList.add("modal-open");
+  }
+  function closeEssay() {
+    if (essayCtrl) { essayCtrl.abort(); essayCtrl = null; }
+    if (essayA) { essayA.notes = $("#emNotes").value; essayA.draft = $("#emDraft").value; persist(); }
+    eModal.hidden = true; document.body.classList.remove("modal-open"); essayA = null; renderAsgn();
+  }
+  if (eModal) {
+    eModal.addEventListener("click", (e) => { if (e.target.closest("[data-eclose]")) closeEssay(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !eModal.hidden) closeEssay(); });
+    $("#emGenerate").addEventListener("click", async () => {
+      if (!(window.BaseAI && window.BaseAI.hasKey())) { eStatus("Add your Anthropic API key on Settings first.", "warn"); return; }
+      const notes = $("#emNotes").value; if (essayA) essayA.notes = notes;
+      const gen = $("#emGenerate"), stop = $("#emStop"), draft = $("#emDraft");
+      draft.value = ""; gen.disabled = true; gen.hidden = true; stop.hidden = false; eStatus("Drafting…");
+      essayCtrl = new AbortController();
+      try {
+        await window.BaseAI.draftEssay(
+          { title: essayA.title, course: essayA.course, notes },
+          (chunk) => { draft.value += chunk; draft.scrollTop = draft.scrollHeight; },
+          essayCtrl.signal
+        );
+        if (essayA) { essayA.draft = draft.value; essayA.notes = notes; persist(); }
+        eStatus("Draft ready — revise away.", "ok");
+      } catch (e) {
+        if (e && e.name === "AbortError") eStatus("Stopped.");
+        else if (e && e.message === "no-key") eStatus("Add your API key on Settings first.", "warn");
+        else eStatus((e && e.message) || "Something went wrong.", "warn");
+      } finally {
+        gen.disabled = false; gen.hidden = false; stop.hidden = true; essayCtrl = null;
+      }
+    });
+    $("#emStop").addEventListener("click", () => { if (essayCtrl) essayCtrl.abort(); });
+    $("#emCopy").addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText($("#emDraft").value); eStatus("Copied.", "ok"); }
+      catch (e) { eStatus("Couldn't copy.", "warn"); }
+    });
+    $("#emSave").addEventListener("click", () => {
+      if (essayA) { essayA.draft = $("#emDraft").value; essayA.notes = $("#emNotes").value; persist(); }
+      toast("Draft saved"); closeEssay();
+    });
+  }
 
   // ---------- SLIDERS ----------
   function bindSlider(id, valId, key, fmt) {

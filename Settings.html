@@ -70,6 +70,17 @@
     </div>
   </section>
 
+  <!-- AI ASSISTANT -->
+  <section class="card panel">
+    <div class="panel-title"><h2>AI essay assistant</h2><span class="set-status" id="aiStatus"><i></i> Not set</span></div>
+    <p class="note">On the <a href="School.html">School</a> page, mark an assignment as <b>Essay</b> and BASE can draft it for you with Claude — using your own Anthropic API key. The key is stored <b>only on this device</b> and is never included in backups. Get one at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a> (requires billing/credit). Drafts are starting points to revise, not finished work.</p>
+    <div class="btn-row" style="gap:8px;align-items:center;flex-wrap:wrap">
+      <input class="field" id="aiKey" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false" style="flex:1;min-width:220px" />
+      <button class="btn btn--red" id="aiSave" data-cursor>Save key</button>
+      <button class="btn btn--ghost btn--sm" id="aiClear" data-cursor>Clear</button>
+    </div>
+  </section>
+
   <!-- BACKUP -->
   <section class="card panel">
     <div class="panel-title"><h2>Backup &amp; restore</h2><span class="hint">keep a copy safe</span></div>
@@ -120,6 +131,7 @@
 
 <script src="store.js"></script>
 <script src="ui.js"></script>
+<script src="ai.js"></script>
 <script src="settings.js"></script>
 <script src="theme.js"></script>
 <script src="cursor.js"></script>

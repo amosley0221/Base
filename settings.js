@@ -96,4 +96,23 @@
     S.save({ profile: { name: "", major: "" }, tasks: [], habits: [], notes: [], events: [], milestones: [], teams: [], budget: { incomes: [], expenses: [], history: [], taxRate: 0.12, accounts: [], bills: [], subscriptions: [] }, school: { creditsNeeded: 120, targetGpa: 3.5, creditsPerSem: 15, completed: [], planned: [], assignments: [] } });
     toast("Cleared"); setTimeout(() => location.reload(), 700);
   });
+
+  // ---------- AI ASSISTANT (Anthropic API key) ----------
+  const AI = window.BaseAI;
+  const aiKey = $("#aiKey"), aiStatus = $("#aiStatus");
+  function refreshAi() {
+    if (!aiStatus) return;
+    if (AI && AI.hasKey()) { aiStatus.innerHTML = "<i></i> Key saved"; aiStatus.classList.add("ok"); }
+    else { aiStatus.innerHTML = "<i></i> Not set"; aiStatus.classList.remove("ok"); }
+  }
+  if (AI && aiKey) {
+    aiKey.value = AI.getKey();
+    refreshAi();
+    $("#aiSave").addEventListener("click", () => {
+      const v = aiKey.value.trim();
+      if (v && !/^sk-ant-/.test(v)) { toast("That doesn't look like an Anthropic key"); return; }
+      AI.setKey(v); refreshAi(); toast(v ? "API key saved" : "Key cleared");
+    });
+    $("#aiClear").addEventListener("click", () => { AI.setKey(""); aiKey.value = ""; refreshAi(); toast("Key cleared"); });
+  }
 })();
