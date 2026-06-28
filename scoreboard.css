@@ -257,3 +257,8 @@ a.npost-link { text-decoration: none; color: inherit; display: block; }
 a.npost-link:hover .nbody b { color: var(--red); }
 a.npost-link:hover .nread { text-decoration: underline; }
 .nread { color: var(--red); font-weight: 600; }
+
+/* wire toggle */
+.news-toggle { display: inline-flex; gap: 6px; margin-top: 14px; background: var(--paper-2, var(--paper)); border: 1px solid var(--edge); border-radius: 100px; padding: 4px; }
+.news-toggle .ntog { font-size: 12.5px; font-weight: 600; padding: 6px 14px; border-radius: 100px; border: none; background: none; color: var(--ink-soft); cursor: pointer; transition: color .2s, background .2s; }
+.news-toggle .ntog.active { background: var(--red); color: #fff; }
