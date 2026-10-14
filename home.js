@@ -99,6 +99,29 @@
       <div class="stat"><div class="n">${habitsToday}<span class="unit">/${state.habits.length}</span></div><div class="k">habits</div></div>`;
   }
 
+  // ---------- WIDE-SCREEN AT-A-GLANCE STRIP ----------
+  function renderGlance() {
+    const el = $("#heroGlance"); if (!el) return;
+    const money = (n) => "$" + Math.round(n).toLocaleString();
+    const classes = (state.events || []).filter((e) => e.day === tIdx && e.cat === "school")
+      .slice().sort((a, z) => String(a.time).localeCompare(String(z.time)));
+    const nextClass = classes[0];
+    const due = (S.dueList ? S.dueList(state.budget || {}) : []);
+    const nb = due[0];
+    const task = (state.tasks || []).find((t) => t.top && !t.done) || (state.tasks || []).find((t) => !t.done);
+
+    const cards = [];
+    cards.push(`<div class="gc"><div class="gc-k">Classes today</div><div class="gc-v">${classes.length}</div><div class="gc-s">${nextClass ? ("next " + nextClass.time + " · " + esc(nextClass.title)) : "none scheduled"}</div></div>`);
+    if (nb) {
+      const when = nb.overdue ? "overdue" : nb.daysUntil === 0 ? "due today" : nb.daysUntil === 1 ? "tomorrow" : "in " + nb.daysUntil + " days";
+      cards.push(`<div class="gc ${nb.overdue ? "gc-alert" : ""}"><div class="gc-k">Next bill</div><div class="gc-v">${money(nb.amount)}</div><div class="gc-s">${esc(nb.label)} · ${when}</div></div>`);
+    } else {
+      cards.push(`<div class="gc"><div class="gc-k">Next bill</div><div class="gc-v">—</div><div class="gc-s">nothing scheduled</div></div>`);
+    }
+    cards.push(`<div class="gc"><div class="gc-k">Top task</div><div class="gc-v gc-task">${task ? esc(task.text) : "All clear"}</div><div class="gc-s">${task ? "focus for today" : "nothing pending"}</div></div>`);
+    el.innerHTML = cards.join("");
+  }
+
   // ---------- TASKS + RING ----------
   const RC = 2 * Math.PI * 54;
   function renderTasks() {
@@ -552,7 +575,7 @@ ${items}
   }
 
   // ===================== RENDER ALL =====================
-  renderHeader(); renderPreview(); renderCountdown(); renderTodayCard();
+  renderHeader(); renderPreview(); renderCountdown(); renderTodayCard(); renderGlance();
   renderTasks(); renderHabits(); renderNotes(); renderWeek(); renderBudget(); renderSchool();
   loadWeather(); renderScores();
 
@@ -585,7 +608,8 @@ ${items}
   // ===================== SCROLL FX =====================
   const nav = $("#nav");
   const heroTrack = $(".h-hero"), heroRed = $("#heroRed"), heroTop = $("#heroTop"),
-    heroStatement = $("#heroStatement"), todayCard = $("#todayCard"), scrollHint = $("#scrollHint");
+    heroStatement = $("#heroStatement"), todayCard = $("#todayCard"), scrollHint = $("#scrollHint"),
+    heroGlance = $("#heroGlance");
   const notesWrap = $(".notes-wrap"), notesTrack = $("#notesTrack");
   let heroFill = 0;
   function trackProgress(el) { const r = el.getBoundingClientRect(); const dist = el.offsetHeight - window.innerHeight; return dist <= 0 ? 0 : clamp(-r.top / dist, 0, 1); }
@@ -595,6 +619,7 @@ ${items}
     heroRed.style.clipPath = `inset(${lerp(56, 0, easeIO(fill))}% 0 0 0)`;
     const tf = clamp(p / 0.32, 0, 1);
     heroTop.style.opacity = String(1 - tf); heroTop.style.transform = `translateY(${lerp(0, -40, tf)}px)`;
+    if (heroGlance) { heroGlance.style.opacity = String(1 - tf); heroGlance.style.transform = `translateY(${lerp(0, -40, tf)}px)`; }
     const st = clamp((p - 0.4) / 0.28, 0, 1);
     heroStatement.style.opacity = String(st); heroStatement.style.transform = `translateY(${lerp(30, 0, easeOut(st))}px)`;
     const pr = clamp((p - 0.34) / 0.5, 0, 1);
