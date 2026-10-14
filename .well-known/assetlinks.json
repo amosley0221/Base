@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.amosley.base",
+      "sha256_cert_fingerprints": [
+        "C3:7C:C1:8B:C7:D7:1F:1E:42:B2:88:6C:80:B7:71:43:E4:7E:82:55:52:D9:D5:D3:4F:E5:D8:D6:F4:6E:63:8E"
+      ]
+    }
+  }
+]
