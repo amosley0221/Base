@@ -6,12 +6,16 @@
   const S = window.Store, { $, $$, esc, toast } = window.UI;
   let state = S.load();
   if (!state.budget) state.budget = { incomes: [], expenses: [] };
-  const b = state.budget;
+  let b = state.budget;
   if (!b.accounts) b.accounts = [];
   if (!b.bills) b.bills = [];
   if (!b.subscriptions) b.subscriptions = [];
+  if (!b.paidLog) b.paidLog = [];
   if (b.taxRate == null) b.taxRate = 0.12;
   const persist = () => S.save(state);
+  // re-sync in-memory state after another module (reminders) writes to storage
+  function reloadState() { state = S.load(); b = state.budget; }
+  let cfRef = new Date(); cfRef.setDate(1); cfRef.setHours(0, 0, 0, 0);
   const money = (n) => "$" + Math.round(n).toLocaleString();
   const money2 = (n) => "$" + (Math.round(n * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 0 });
   const CATS = { needs: "Needs", wants: "Wants", goals: "Goals" };
@@ -62,7 +66,108 @@
     }));
   }
 
-  function renderAll() { renderSummary(); renderCalc(); renderIncome(); renderExpenses(); renderAccounts(); renderBills(); renderSubs(); renderDue(); renderTrend(); }
+  function renderAll() { renderSummary(); renderCalc(); renderCashflow(); renderReminders(); renderIncome(); renderExpenses(); renderAccounts(); renderBills(); renderSubs(); renderDue(); renderTrend(); }
+
+  // ---------- shared: a due-row with a mark-paid button ----------
+  function dueRowHTML(it, opts) {
+    opts = opts || {};
+    const overdue = !!it.overdue;
+    const soon = !overdue && it.daysUntil != null && it.daysUntil <= 5;
+    const day = it.date.getDate();
+    let when;
+    if (opts.paidLabel && it.paid) when = "paid";
+    else if (overdue) when = `<span class="od">Overdue</span>`;
+    else if (it.daysUntil === 0) when = "Today";
+    else if (it.daysUntil === 1) when = "Tomorrow";
+    else if (it.daysUntil != null) when = "in " + it.daysUntil + " days";
+    else when = "";
+    return `<div class="due-row ${it.paid ? "paid" : ""}" data-item="${it.itemId || it.id}" data-cycle="${it.cycleKey}" data-amt="${it.amount}" data-label="${esc(it.label)}" data-kind="${it.group || ""}">
+      <div class="dd-day ${overdue ? "overdue" : soon ? "soon" : ""}">${day}</div>
+      <div class="row-main"><div class="dn">${esc(it.label)}</div><div class="dk">${esc(it.kind)}${when ? " · " + when : ""}</div></div>
+      <span class="da">${money(it.amount)}</span>
+      <button class="pay-btn ${it.paid ? "on" : ""}" title="${it.paid ? "Mark unpaid" : "Mark paid"}" aria-label="Toggle paid">✓</button>
+    </div>`;
+  }
+  function wirePay(container, allowUndo) {
+    $$(".pay-btn", container).forEach((btn) => {
+      const row = btn.closest(".due-row");
+      btn.addEventListener("click", () => {
+        const id = row.dataset.item, key = row.dataset.cycle;
+        const meta = { label: row.dataset.label, kind: row.dataset.kind, amount: +row.dataset.amt || 0 };
+        const paid = S.isPaidIn(b, id, key);
+        if (paid && allowUndo) { S.unmarkPaid(b, id, key); toast("Marked unpaid"); }
+        else if (!paid) { S.markPaid(b, id, key, meta); toast("Marked paid"); }
+        else return;
+        persist();
+        if (window.BaseReminders) BaseReminders.mirrorSchedule(state);
+        renderAll();
+      });
+    });
+  }
+
+  // ---------- MONTHLY CASH FLOW ----------
+  function monthSchedule(ref) {
+    const y = ref.getFullYear(), m = ref.getMonth();
+    const rows = [];
+    const mk = (id, label, kind, group, amount, date, yearly) => {
+      const cycleKey = S.cycleKeyFor(date, yearly);
+      return { id, label, kind, group, amount, date, cycleKey, paid: S.isPaidIn(b, id, cycleKey) };
+    };
+    (b.bills || []).forEach((x) => { if (x.due) rows.push(mk(x.id, x.label, "Bill", "bill", +x.amount || 0, S.occDate(x.due, y, m), false)); });
+    (b.subscriptions || []).forEach((x) => {
+      if (!x.due) return;
+      if (x.cycle === "yearly") { if (((x.dueMonth || 1) - 1) !== m) return; rows.push(mk(x.id, x.label, "Subscription · yearly", "sub", +x.amount || 0, S.occDate(x.due, y, m), true)); }
+      else rows.push(mk(x.id, x.label, "Subscription", "sub", +x.amount || 0, S.occDate(x.due, y, m), false));
+    });
+    (b.accounts || []).forEach((a) => { if (a.type === "credit" && a.due) rows.push(mk(a.id, a.label + " payment", "Credit card", "card", +a.balance || 0, S.occDate(a.due, y, m), false)); });
+    rows.sort((p, q) => p.date - q.date);
+    return rows;
+  }
+  function renderCashflow() {
+    const ref = cfRef, y = ref.getFullYear(), m = ref.getMonth();
+    $("#cfMonth").textContent = ref.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    const c = calc();
+    const rows = monthSchedule(ref);
+    const out = rows.reduce((s, r) => s + r.amount, 0);
+    const paidOut = rows.filter((r) => r.paid).reduce((s, r) => s + r.amount, 0);
+    const net = c.incomeMonthly - out;
+    const now = new Date(); const isCurrent = (y === now.getFullYear() && m === now.getMonth());
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const remaining = rows.filter((r) => !r.paid && r.date >= today).reduce((s, r) => s + r.amount, 0);
+    const projected = c.cash - remaining;
+    $("#cfTiles").innerHTML = `
+      <div class="cf-tile"><div class="v pos">${money(c.incomeMonthly)}</div><div class="k">Income in</div><div class="s">monthly sources</div></div>
+      <div class="cf-tile"><div class="v neg">${money(out)}</div><div class="k">Bills out</div><div class="s">${money(paidOut)} paid · ${money(out - paidOut)} left</div></div>
+      <div class="cf-tile"><div class="v ${net >= 0 ? "pos" : "neg"}">${net < 0 ? "–" : ""}${money(Math.abs(net))}</div><div class="k">Net this month</div><div class="s">income − bills</div></div>
+      <div class="cf-tile"><div class="v ${isCurrent && projected < 0 ? "neg" : ""}">${isCurrent ? money(projected) : "—"}</div><div class="k">Projected cash</div><div class="s">${isCurrent ? "after remaining bills" : "this month only"}</div></div>`;
+    $("#cfNote").textContent = rows.length ? "Tap ✓ to mark a bill paid — it rolls forward to the next cycle automatically." : "No bills scheduled this month.";
+    $("#cfSched").innerHTML = rows.map((r) => {
+      const overdue = isCurrent && !r.paid && r.date < today;
+      return dueRowHTML({ itemId: r.id, label: r.label, kind: r.kind, group: r.group, amount: r.amount, date: r.date, cycleKey: r.cycleKey, paid: r.paid, overdue: overdue, daysUntil: null }, { paidLabel: true });
+    }).join("");
+    wirePay($("#cfSched"), true);
+  }
+
+  // ---------- REMINDERS ----------
+  function renderReminders() {
+    const R = window.BaseReminders;
+    const st = R ? R.status() : { enabled: !!(b.remind && b.remind.enabled), daysBefore: (b.remind && b.remind.daysBefore) || 3, supported: ("Notification" in window), permission: ("Notification" in window) ? Notification.permission : "unsupported" };
+    const en = $("#remEnable"), days = $("#remDays"), stat = $("#remStatus");
+    en.checked = st.enabled;
+    if (document.activeElement !== days) days.value = st.daysBefore;
+    en.disabled = !st.supported;
+    if (!st.supported) stat.textContent = "This browser doesn't support notifications.";
+    else if (st.permission === "denied") stat.textContent = "Notifications are blocked — turn them on for BASE in your phone/browser settings, then re-enable here.";
+    else if (st.enabled) {
+      const p = R ? R.pending() : [];
+      stat.textContent = p.length ? (p.length + " bill" + (p.length > 1 ? "s" : "") + " due within " + st.daysBefore + " days.") : "You're all caught up — nothing due soon.";
+    } else stat.textContent = "Off. Turn on to get a heads-up before each bill is due.";
+    // preview list of what's due within the window (always shown)
+    const win = Math.max(0, st.daysBefore || 0);
+    const pend = S.dueList(b).filter((d) => d.overdue || (d.daysUntil >= 0 && d.daysUntil <= win));
+    $("#remList").innerHTML = pend.map((it) => dueRowHTML(it)).join("");
+    wirePay($("#remList"), false);
+  }
 
   // ---------- CALCULATIONS ----------
   function calc() {
@@ -154,25 +259,14 @@
   }
 
   // ---------- UPCOMING DUE DATES ----------
+  // kept for bill/sub chips (small day pill on the item rows)
   function dueClass(dom) { const d = S.daysUntilDom(dom); return d === 0 ? "today" : (d != null && d <= 5) ? "soon" : ""; }
   function renderDue() {
-    const items = [];
-    b.bills.forEach((x) => { if (x.due) items.push({ name: x.label, kind: "Bill", amount: +x.amount || 0, due: x.due }); });
-    b.subscriptions.forEach((x) => { if (x.due) items.push({ name: x.label, kind: x.cycle === "yearly" ? "Subscription · yearly" : "Subscription", amount: +x.amount || 0, due: x.due }); });
-    b.accounts.forEach((a) => { if (a.type === "credit" && a.due) items.push({ name: a.label + " payment", kind: "Credit card", amount: +a.balance || 0, due: a.due }); });
-    items.forEach((it) => (it.d = S.daysUntilDom(it.due)));
-    items.sort((a, z) => a.d - z.d);
+    const items = S.dueList(b).filter((it) => it.overdue || it.daysUntil <= 31);
     const list = $("#dueList");
     if (!items.length) { list.innerHTML = `<p class="muted">Nothing with a due date yet.</p>`; return; }
-    list.innerHTML = items.map((it) => {
-      const soon = it.d <= 5;
-      const when = it.d === 0 ? "Today" : it.d === 1 ? "Tomorrow" : "in " + it.d + " days";
-      return `<div class="due-row">
-        <div class="dd-day ${soon ? "soon" : ""}">${it.due}</div>
-        <div class="row-main"><div class="dn">${esc(it.name)}</div><div class="dk">${it.kind} · ${when}</div></div>
-        <span class="da">${money(it.amount)}</span>
-      </div>`;
-    }).join("");
+    list.innerHTML = items.map((it) => dueRowHTML(it)).join("");
+    wirePay(list, false);
   }
 
   // ---------- TAX CONTROL ----------
@@ -203,9 +297,34 @@
   $("#addSub").addEventListener("click", () => {
     const label = $("#sbLabel").value.trim(), amt = +$("#sbAmt").value, cycle = $("#sbCycle").value, due = +$("#sbDue").value;
     if (!label || !(amt > 0)) { toast("Add a subscription and amount"); return; }
-    b.subscriptions.push({ id: S.uid("s"), label, amount: amt, cycle, due: (due >= 1 && due <= 31) ? due : null });
-    ["sbLabel", "sbAmt", "sbDue"].forEach((id) => ($("#" + id).value = ""));
+    const sub = { id: S.uid("s"), label, amount: amt, cycle, due: (due >= 1 && due <= 31) ? due : null };
+    if (cycle === "yearly") { const mo = +$("#sbMonth").value; sub.dueMonth = (mo >= 1 && mo <= 12) ? mo : (new Date().getMonth() + 1); }
+    b.subscriptions.push(sub);
+    ["sbLabel", "sbAmt", "sbMonth", "sbDue"].forEach((id) => ($("#" + id).value = ""));
     persist(); renderAll(); toast("Subscription added");
+  });
+
+  // ---------- cash flow month nav ----------
+  $("#cfPrev").addEventListener("click", () => { cfRef.setMonth(cfRef.getMonth() - 1); renderCashflow(); });
+  $("#cfNext").addEventListener("click", () => { cfRef.setMonth(cfRef.getMonth() + 1); renderCashflow(); });
+
+  // ---------- reminder controls ----------
+  $("#remEnable").addEventListener("change", async (e) => {
+    if (!window.BaseReminders) { e.target.checked = false; return; }
+    if (e.target.checked) {
+      const ok = await BaseReminders.enable(+($("#remDays").value) || 3);
+      reloadState();
+      if (!ok) { e.target.checked = false; toast("Allow notifications to turn on reminders"); }
+      else toast("Reminders on");
+    } else { BaseReminders.disable(); reloadState(); toast("Reminders off"); }
+    renderReminders();
+  });
+  $("#remDays").addEventListener("change", () => {
+    const n = Math.max(0, Math.min(14, +$("#remDays").value || 0));
+    $("#remDays").value = n;
+    if (window.BaseReminders) BaseReminders.setDays(n);
+    reloadState();
+    renderReminders();
   });
 
   // ---------- TRENDS ----------

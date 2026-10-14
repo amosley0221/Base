@@ -49,6 +49,83 @@
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
   }
 
+  // ---- recurring bill scheduling + paid tracking ----
+  // The occurrence Date for a day-of-month in a given year/month (clamped to month length).
+  function occDate(dom, year, month) {
+    const dim = new Date(year, month + 1, 0).getDate();
+    const d = new Date(year, month, Math.min(dom || 1, dim));
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+  // The cycle key a date belongs to: "YYYY-MM" for monthly items, "YYYY" for yearly.
+  function cycleKeyFor(date, yearly) {
+    return yearly ? String(date.getFullYear())
+      : date.getFullYear() + "-" + pad(date.getMonth() + 1);
+  }
+  function isPaidIn(budget, itemId, key) {
+    return !!(budget && budget.paidLog || []).length &&
+      budget.paidLog.some((p) => p.itemId === itemId && p.cycleKey === key);
+  }
+  // The next relevant occurrence for an item, accounting for what's already paid.
+  // item: { id, due (day-of-month), cycle?, dueMonth? }
+  // returns { date, overdue, cycleKey }
+  function activeDue(budget, item) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const yearly = item.cycle === "yearly";
+    if (yearly) {
+      const mo = (item.dueMonth || 1) - 1;
+      let y = today.getFullYear();
+      let d = occDate(item.due, y, mo);
+      let key = String(y);
+      // if this year's date passed and it's already paid, roll to next year
+      if ((d < today) && isPaidIn(budget, item.id, key)) { y += 1; d = occDate(item.due, y, mo); key = String(y); }
+      else if (d >= today && isPaidIn(budget, item.id, key)) { y += 1; d = occDate(item.due, y, mo); key = String(y); }
+      return { date: d, overdue: d < today && !isPaidIn(budget, item.id, key), cycleKey: key };
+    }
+    const y = today.getFullYear(), m = today.getMonth();
+    let d = occDate(item.due, y, m);
+    let key = cycleKeyFor(d, false);
+    if (isPaidIn(budget, item.id, key)) {           // paid this month -> show next month
+      d = occDate(item.due, y, m + 1); key = cycleKeyFor(d, false);
+      return { date: d, overdue: false, cycleKey: key };
+    }
+    if (d < today) return { date: d, overdue: true, cycleKey: key };  // passed, unpaid
+    return { date: d, overdue: false, cycleKey: key };
+  }
+  // All due occurrences (bills + subs + credit-card payments) with scheduling info.
+  function dueList(budget) {
+    budget = budget || {};
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const out = [];
+    (budget.bills || []).forEach((x) => {
+      if (!x.due) return;
+      const a = activeDue(budget, { id: x.id, due: x.due });
+      out.push({ itemId: x.id, label: x.label, kind: "Bill", group: "bill", amount: +x.amount || 0, ...a });
+    });
+    (budget.subscriptions || []).forEach((x) => {
+      if (!x.due) return;
+      const a = activeDue(budget, { id: x.id, due: x.due, cycle: x.cycle, dueMonth: x.dueMonth });
+      out.push({ itemId: x.id, label: x.label, kind: x.cycle === "yearly" ? "Subscription · yearly" : "Subscription", group: "sub", amount: +x.amount || 0, ...a });
+    });
+    (budget.accounts || []).forEach((a) => {
+      if (!(a.type === "credit" && a.due)) return;
+      const d = activeDue(budget, { id: a.id, due: a.due });
+      out.push({ itemId: a.id, label: a.label + " payment", kind: "Credit card", group: "card", amount: +a.balance || 0, ...d });
+    });
+    out.forEach((o) => (o.daysUntil = Math.round((o.date - today) / 86400000)));
+    out.sort((p, q) => p.date - q.date);
+    return out;
+  }
+  function markPaid(budget, itemId, cycleKey, meta) {
+    budget.paidLog = budget.paidLog || [];
+    if (budget.paidLog.some((p) => p.itemId === itemId && p.cycleKey === cycleKey)) return;
+    budget.paidLog.push(Object.assign({ id: uid("pl"), itemId, cycleKey, paidOn: isoInDays(0) }, meta || {}));
+  }
+  function unmarkPaid(budget, itemId, cycleKey) {
+    if (!budget.paidLog) return;
+    budget.paidLog = budget.paidLog.filter((p) => !(p.itemId === itemId && p.cycleKey === cycleKey));
+  }
+
   const SEED = {
     profile: {
       name: "Antonio",
@@ -142,14 +219,18 @@
         { id: "b3", label: "Internet", amount: 40, due: 12 },
         { id: "b4", label: "Transit pass", amount: 65, due: 5 },
       ],
-      // subscriptions. cycle = monthly | yearly
+      // subscriptions. cycle = monthly | yearly. yearly uses dueMonth (1-12).
       subscriptions: [
         { id: "s1", label: "Spotify", amount: 11, cycle: "monthly", due: 8 },
         { id: "s2", label: "Netflix", amount: 15, cycle: "monthly", due: 20 },
         { id: "s3", label: "iCloud+", amount: 3, cycle: "monthly", due: 5 },
-        { id: "s4", label: "Amazon Prime", amount: 139, cycle: "yearly", due: 14 },
+        { id: "s4", label: "Amazon Prime", amount: 139, cycle: "yearly", due: 14, dueMonth: 7 },
         { id: "s5", label: "GitHub Pro", amount: 4, cycle: "monthly", due: 28 },
       ],
+      // bill reminders / notifications
+      remind: { enabled: false, daysBefore: 3 },
+      // payment history — each { id, itemId, label, kind, amount, paidOn (ISO), cycleKey }
+      paidLog: [],
     },
     // school / GPA calculator
     school: {
@@ -202,6 +283,8 @@
     if (!merged.budget.accounts) merged.budget.accounts = clone(base.budget.accounts);
     if (!merged.budget.bills) merged.budget.bills = clone(base.budget.bills);
     if (!merged.budget.subscriptions) merged.budget.subscriptions = clone(base.budget.subscriptions);
+    if (!merged.budget.remind) merged.budget.remind = clone(base.budget.remind);
+    if (!Array.isArray(merged.budget.paidLog)) merged.budget.paidLog = [];
     // school
     merged.school = Object.assign({}, base.school, saved.school || {});
     if (!merged.school.assignments) merged.school.assignments = clone(base.school.assignments);
@@ -264,6 +347,7 @@
     KEY, DAYS, DAYS_FULL, SEED, load, save, reset, clone, uid,
     todayIdx, isWeekend, formatDate, greeting, isoInDays, daysUntil, isoMonth, monthLabel,
     GRADES, gradePoints, gpaLetter, daysUntilDom, ordinal,
+    occDate, cycleKeyFor, isPaidIn, activeDue, dueList, markPaid, unmarkPaid,
     exportData, importData, storageBytes, EXPORT_VERSION,
   };
 })();

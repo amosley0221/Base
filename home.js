@@ -442,24 +442,21 @@ ${items}
       const creditOwed = accounts.filter((a) => a.type === "credit").reduce((s, a) => s + (+a.balance || 0), 0);
       const billsTotal = bills.reduce((s, x) => s + (+x.amount || 0), 0);
 
-      // soonest upcoming payment across bills, subs, credit cards
-      const due = [];
-      bills.forEach((x) => { if (x.due) due.push({ name: x.label, amount: +x.amount || 0, due: x.due, d: S.daysUntilDom(x.due) }); });
-      subs.forEach((x) => { if (x.due) due.push({ name: x.label, amount: +x.amount || 0, due: x.due, d: S.daysUntilDom(x.due) }); });
-      accounts.forEach((a) => { if (a.type === "credit" && a.due) due.push({ name: a.label + " payment", amount: +a.balance || 0, due: a.due, d: S.daysUntilDom(a.due) }); });
-      due.sort((a, z) => a.d - z.d);
+      // soonest upcoming payment (auto-advances past paid cycles, flags overdue)
+      const due = S.dueList(b);
       const next = due[0];
-      const soonTotal = due.filter((x) => x.d <= 30).reduce((s, x) => s + x.amount, 0);
+      const soonTotal = due.filter((x) => x.overdue || x.daysUntil <= 30).reduce((s, x) => s + x.amount, 0);
+      const overdueCount = due.filter((x) => x.overdue).length;
 
       let nextHtml = `<div class="bt-s">Nothing scheduled</div>`;
       if (next) {
-        const when = next.d === 0 ? "Today" : next.d === 1 ? "Tomorrow" : "in " + next.d + " days";
-        nextHtml = `<div class="bt-next"><div class="day ${next.d <= 5 ? "soon" : ""}">${next.due}</div>
-          <div><div class="nm">${money(next.amount)} · ${next.name}</div><div class="wh">${when}</div></div></div>`;
+        const when = next.overdue ? "Overdue" : next.daysUntil === 0 ? "Today" : next.daysUntil === 1 ? "Tomorrow" : "in " + next.daysUntil + " days";
+        nextHtml = `<div class="bt-next"><div class="day ${next.overdue || next.daysUntil <= 5 ? "soon" : ""}">${next.date.getDate()}</div>
+          <div><div class="nm">${money(next.amount)} · ${esc(next.label)}</div><div class="wh">${when}</div></div></div>`;
       }
       strip.innerHTML = `
         <div class="bd-tile"><div class="bt-n pos">${money(cash)}</div><div class="bt-k">Total cash</div><div class="bt-s">${creditOwed > 0 ? money(creditOwed) + " owed on cards" : "no card balances"}</div></div>
-        <div class="bd-tile"><div class="bt-n">${money(soonTotal)}</div><div class="bt-k">Due this month</div><div class="bt-s">${due.length} payment${due.length === 1 ? "" : "s"} · ${money(billsTotal)} in bills</div></div>
+        <div class="bd-tile"><div class="bt-n">${money(soonTotal)}</div><div class="bt-k">Due this month</div><div class="bt-s">${overdueCount ? overdueCount + " overdue · " : ""}${due.length} payment${due.length === 1 ? "" : "s"} · ${money(billsTotal)} in bills</div></div>
         <div class="bd-tile"><div class="bt-k" style="margin-top:0">Next payment</div>${nextHtml}</div>`;
     }
   }
