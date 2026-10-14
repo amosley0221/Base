@@ -1,0 +1,55 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.amosley.base'
+    compileSdk 34
+
+    defaultConfig {
+        // applicationId is PERMANENT. Changing it breaks in-place updates.
+        applicationId "com.amosley.base"
+        minSdk 23
+        targetSdk 34
+
+        // Driven by CI. versionCode MUST strictly increase every release,
+        // or Android refuses to install the update over the existing app.
+        versionCode (System.getenv("VERSION_CODE") ?: "1").toInteger()
+        versionName System.getenv("VERSION_NAME") ?: "1.0.0"
+    }
+
+    signingConfigs {
+        release {
+            // Populated from environment in CI (decoded from a GitHub Secret).
+            // Falls back gracefully for local unsigned builds.
+            def ksPath = System.getenv("ANDROID_KEYSTORE_PATH")
+            if (ksPath) {
+                storeFile file(ksPath)
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            if (System.getenv("ANDROID_KEYSTORE_PATH")) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // Google's Trusted Web Activity support library — launches the PWA
+    // full-screen in a Chrome-backed container.
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+}
