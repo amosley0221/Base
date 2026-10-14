@@ -122,6 +122,102 @@
     el.innerHTML = cards.join("");
   }
 
+  // ---------- UNFOLDED / TABLET DASHBOARD ----------
+  function dashCard(title, href, body) {
+    return `<section class="hd-card"><div class="hd-card-h"><h2>${title}</h2><a class="hd-more" href="${href}" data-cursor>Open →</a></div>${body}</section>`;
+  }
+  function renderDash() {
+    const grid = $("#dGrid"); if (!grid) return;
+    const name = (state.profile && state.profile.name) || "";
+    $("#dGreet").textContent = S.greeting() + (name ? ", " + name : "") + ".";
+    $("#dDate").textContent = S.formatDate();
+    const cards = [];
+
+    // TODAY — focus tasks
+    const top = (state.tasks || []).filter((t) => t.top);
+    const doneN = top.filter((t) => t.done).length;
+    const taskRows = top.length
+      ? top.map((t) => `<label class="hd-task ${t.done ? "done" : ""}"><input type="checkbox" data-task="${t.id}" ${t.done ? "checked" : ""}><span>${esc(t.text)}</span></label>`).join("")
+      : `<p class="muted">No focus tasks yet — add a few on Plan.</p>`;
+    cards.push(dashCard("Today", "Plan.html",
+      `<div class="hd-today"><div class="hd-ring">${doneN}/${top.length || 0}</div><div class="hd-tasks">${taskRows}</div></div>`));
+
+    // BUDGET
+    const b = state.budget || {};
+    const cash = (b.accounts || []).filter((a) => a.type === "debit").reduce((s, a) => s + (+a.balance || 0), 0);
+    const due = S.dueList ? S.dueList(b) : [];
+    const nb = due[0];
+    const soonTotal = due.filter((x) => x.overdue || x.daysUntil <= 30).reduce((s, x) => s + x.amount, 0);
+    const overdueN = due.filter((x) => x.overdue).length;
+    const nbWhen = nb ? (nb.overdue ? "overdue" : nb.daysUntil === 0 ? "today" : nb.daysUntil === 1 ? "tomorrow" : "in " + nb.daysUntil + "d") : "";
+    cards.push(dashCard("Budget", "Budget.html",
+      `<div class="hd-stats3">
+         <div><div class="v pos">${money(cash)}</div><div class="k">Cash</div></div>
+         <div><div class="v">${money(soonTotal)}</div><div class="k">Due this mo.</div></div>
+         <div><div class="v ${nb && nb.overdue ? "neg" : ""}">${nb ? money(nb.amount) : "—"}</div><div class="k">${nb ? "Next bill" : "No bills"}</div></div>
+       </div>
+       <div class="hd-line">${nb ? esc(nb.label) + " · " + nbWhen : "Nothing scheduled"}${overdueN ? ` · <span class="neg">${overdueN} overdue</span>` : ""}</div>`));
+
+    // SCHOOL
+    const sc = state.school || {};
+    const gpa = gpaOf(sc.completed).gpa;
+    const asg = (sc.assignments || []).filter((a) => !a.done).map((a) => ({ ...a, d: S.daysUntil(a.due) })).sort((x, y) => x.d - y.d).slice(0, 4);
+    const asgRows = asg.length
+      ? asg.map((a) => { const cls = a.d < 0 ? "neg" : a.d <= 2 ? "warn" : ""; const txt = a.d < 0 ? "late" : a.d === 0 ? "today" : a.d === 1 ? "tomorrow" : "in " + a.d + "d"; return `<div class="hd-arow"><span class="t">${esc(a.title)}</span><span class="d ${cls}">${txt}</span></div>`; }).join("")
+      : `<p class="muted">Nothing due — you're clear.</p>`;
+    cards.push(dashCard("School", "School.html",
+      `<div class="hd-stats3"><div><div class="v">${gpa != null ? gpa.toFixed(2) : "—"}</div><div class="k">GPA</div></div><div><div class="v">${asg.length}</div><div class="k">Upcoming</div></div></div>${asgRows}`));
+
+    // UPCOMING — today's schedule + countdowns
+    const todayEv = (state.events || []).filter((e) => e.day === tIdx).slice().sort((a, z) => String(a.time).localeCompare(String(z.time)));
+    const evRows = todayEv.length
+      ? todayEv.map((e) => `<div class="hd-arow"><span class="t">${esc(e.time)} · ${esc(e.title)}</span><span class="d cat-${e.cat}">${esc(e.cat)}</span></div>`).join("")
+      : `<p class="muted">Nothing on today.</p>`;
+    const ms = (state.milestones || []).map((m) => ({ ...m, d: S.daysUntil(m.date) })).filter((m) => m.d >= 0).sort((a, z) => a.d - z.d).slice(0, 3);
+    const msRows = ms.length
+      ? ms.map((m) => `<div class="hd-arow"><span class="t">${esc(m.title)}</span><span class="d">${m.d === 0 ? "today" : m.d === 1 ? "tomorrow" : "in " + m.d + "d"}</span></div>`).join("")
+      : `<p class="muted">No countdowns.</p>`;
+    cards.push(dashCard("Upcoming", "Calendar.html",
+      `<div class="hd-sub">Today's schedule</div>${evRows}<div class="hd-sub">Countdowns</div>${msRows}`));
+
+    // HABITS
+    const habits = state.habits || [];
+    const habitRows = habits.length
+      ? habits.map((h) => {
+        const dots = h.days.map((on, i) => `<button class="hd-dot ${on ? "on" : ""} ${i === tIdx ? "today" : ""}" data-habit="${h.id}" data-i="${i}" aria-label="${S.DAYS[i]}"></button>`).join("");
+        return `<div class="hd-habit"><span class="t">${esc(h.name)}</span><div class="hd-dots">${dots}</div></div>`;
+      }).join("")
+      : `<p class="muted">No habits yet.</p>`;
+    cards.push(dashCard("Habits", "Plan.html", habitRows));
+
+    // SCOREBOARD (filled async by renderDashScores)
+    cards.push(dashCard("Scoreboard", "Scoreboard.html", `<div id="dScores">${dashScoresHTML || '<p class="muted">Loading scores…</p>'}</div>`));
+
+    grid.innerHTML = cards.join("");
+    wireDash();
+  }
+  let dashScoresHTML = "";
+  function renderDashScores() {
+    if (!sportsToday.length) dashScoresHTML = `<p class="muted">No games today for your teams.</p>`;
+    else dashScoresHTML = sportsToday.map((s) => `<div class="hd-arow"><span class="t">${esc(s.team)}</span><span class="d ${s.live ? "live" : ""}">${s.live ? "LIVE" : esc(s.time)}</span></div>`).join("");
+    const el = $("#dScores"); if (el) el.innerHTML = dashScoresHTML;
+  }
+  function wireDash() {
+    $$("#dGrid input[data-task]").forEach((cb) => cb.addEventListener("change", () => {
+      const t = state.tasks.find((x) => x.id === cb.dataset.task); if (!t) return;
+      t.done = cb.checked; persist(); renderDash(); renderTasks(); renderTodayCard();
+    }));
+    $$("#dGrid .hd-dot").forEach((d) => d.addEventListener("click", () => {
+      const h = state.habits.find((x) => x.id === d.dataset.habit); if (!h) return;
+      h.days[+d.dataset.i] = !h.days[+d.dataset.i]; persist(); renderDash(); renderHabits(); renderTodayCard();
+    }));
+  }
+  function syncDashWx() {
+    [["#dwxIcon", "#wxIcon", 1], ["#dwxTemp", "#wxTemp", 0], ["#dwxCond", "#wxCond", 0], ["#dwxLoc", "#wxLoc", 0]].forEach(([d, s, html]) => {
+      const de = $(d), se = $(s); if (de && se) { if (html) de.innerHTML = se.innerHTML; else de.textContent = se.textContent; }
+    });
+  }
+
   // ---------- TASKS + RING ----------
   const RC = 2 * Math.PI * 54;
   function renderTasks() {
@@ -310,6 +406,7 @@ ${items}
     scoreLive = cards.some((c) => c.rank === 0);
     scheduleScores();
     renderPreview();
+    renderDashScores();
   }
   // auto-refresh: poll every 30s while a game is live, else every 5 min; pause when the tab is hidden
   function scheduleScores() {
@@ -566,7 +663,8 @@ ${items}
       let name = fallbackName || "";
       try { const gj = await (await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)).json(); name = gj.city || gj.locality || gj.principalSubdivision || name; } catch (e) {}
       if (name) $("#wxLoc").textContent = name;
-    } catch (e) { $("#wxCond").textContent = "Weather unavailable"; $("#wxIcon").innerHTML = WX.cloud; }
+      syncDashWx();
+    } catch (e) { $("#wxCond").textContent = "Weather unavailable"; $("#wxIcon").innerHTML = WX.cloud; syncDashWx(); }
   }
   function loadWeather() {
     const fb = () => fetchWx(40.7128, -74.006, "New York");
@@ -575,8 +673,12 @@ ${items}
   }
 
   // ===================== RENDER ALL =====================
-  renderHeader(); renderPreview(); renderCountdown(); renderTodayCard(); renderGlance();
+  renderHeader(); renderPreview(); renderCountdown(); renderTodayCard(); renderGlance(); renderDash();
   renderTasks(); renderHabits(); renderNotes(); renderWeek(); renderBudget(); renderSchool();
+
+  // re-render the dashboard when crossing the fold/tablet breakpoint
+  const dashMQ = window.matchMedia("(min-width: 820px)");
+  (dashMQ.addEventListener ? dashMQ.addEventListener("change", renderDash) : dashMQ.addListener(renderDash));
   loadWeather(); renderScores();
 
   // ===================== DOT NAV =====================
@@ -639,7 +741,8 @@ ${items}
     document.body.classList.toggle("theme-dark", theme === "on-dark");
   }
   let ticking = false;
-  function frame() { updateHero(); updateNotes(); updateNav(); updateDots(); ticking = false; }
+  const dashActive = () => window.matchMedia("(min-width: 820px)").matches;
+  function frame() { if (dashActive()) { ticking = false; return; } updateHero(); updateNotes(); updateNav(); updateDots(); ticking = false; }
   function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(frame); } }
 
   const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) e.target.classList.add("in"); }), { threshold: 0.18 });
