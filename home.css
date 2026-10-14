@@ -53,6 +53,26 @@ body.theme-dark .progress { background: #fff; }
   .ht-left .greet { font-size: clamp(2.4rem, 6vw, 4rem); }
 }
 
+/* At-a-glance dashboard strip — fills the wide hero on unfolded/tablet screens.
+   Hidden on phones (the stretched single column there is fine). */
+.hero-glance { display: none; }
+@media (min-width: 820px) {
+  .hero-glance {
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 16px;
+    position: absolute; left: var(--pad); right: calc(var(--pad) + 56px); bottom: 48%;
+    will-change: opacity, transform; z-index: 3;
+  }
+  .hero-glance .gc { background: var(--paper); border: 1px solid var(--edge-soft); border-radius: 16px; padding: 16px 18px; min-width: 0; box-shadow: var(--shadow); }
+  .hero-glance .gc-k { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); }
+  .hero-glance .gc-v { font-size: 1.55rem; font-weight: 700; letter-spacing: -0.02em; margin-top: 6px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hero-glance .gc-v.gc-task { font-size: 1.02rem; font-weight: 600; letter-spacing: -0.01em; white-space: normal; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .hero-glance .gc-s { font-size: 12.5px; color: var(--ink-faint); margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hero-glance .gc.gc-alert { border-color: color-mix(in oklab, var(--red) 45%, var(--edge)); }
+  .hero-glance .gc.gc-alert .gc-v { color: var(--red); }
+}
+/* on very wide screens cap the strip so cards don't stretch oddly */
+@media (min-width: 1300px) { .hero-glance { right: auto; width: min(840px, 60vw); } }
+
 /* white statement that rides in over the red */
 .h-hero-statement {
   position: absolute; left: 0; right: 0; top: 16vh; text-align: center; color: #fff;
@@ -369,6 +389,7 @@ pre.py .fn { color: #ffd9a0; }
   .h-hero-pin, .notes-pin { position: static; height: auto; }
   .h-hero-red { clip-path: inset(0 0 0 0); position: relative; min-height: 50vh; }
   .h-hero-top { display: none; }
+  .hero-glance { display: none !important; }
   .h-hero-statement { position: relative; opacity: 1; top: 0; padding: 14vh 0; }
   .h-today-card { position: relative; transform: none; opacity: 1; margin: -8vh auto 8vh; }
   .scroll-hint { display: none; }
