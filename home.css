@@ -40,10 +40,15 @@ body.theme-dark .progress { background: #fff; }
   .ht-left { max-width: 100%; }
   .ht-weather { align-items: flex-start; text-align: left; }
 }
-/* Keep the hero's right-hand content clear of the fixed section rail (dotnav)
-   on anything wider than a phone — this is what overlapped on the unfolded Fold. */
-@media (min-width: 641px) {
+/* Medium widths still show the section-dot rail, so keep the hero's
+   right-hand content clear of it. (On wide screens the rail is hidden.) */
+@media (min-width: 641px) and (max-width: 819px) {
   .h-hero-top { padding-right: calc(var(--pad) + 56px); }
+}
+/* Wide / unfolded: the vertical section-dot rail reads as a "bar" down the
+   right edge and isn't needed in the scrolling tablet view — hide it. */
+@media (min-width: 820px) {
+  #dotnav { display: none !important; }
 }
 /* Unfolded foldables & small tablets (≈ Z Fold inner screen, iPad mini): give the
    hero a calmer two-column rhythm and use the extra width instead of stretching. */
