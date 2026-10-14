@@ -35,6 +35,25 @@
 <main>
 
   <!-- ============ HERO ============ -->
+  <!-- ============ UNFOLDED / TABLET DASHBOARD (wide screens only) ============ -->
+  <div class="home-dash" id="homeDash" aria-label="Dashboard">
+    <header class="hd-head">
+      <div class="hd-greet">
+        <h1 id="dGreet">Good morning.</h1>
+        <div class="hd-date" id="dDate">Today</div>
+      </div>
+      <div class="hd-weather">
+        <div class="wx-icon" id="dwxIcon"></div>
+        <div class="hd-wx-main">
+          <span class="t" id="dwxTemp">—°</span>
+          <span class="c" id="dwxCond">—</span>
+          <span class="l" id="dwxLoc"></span>
+        </div>
+      </div>
+    </header>
+    <div class="hd-grid" id="dGrid"></div>
+  </div>
+
   <section class="h-hero" data-nav="hero" data-label="Home" data-screen-label="Hero">
     <div class="h-hero-pin">
       <div class="h-hero-red" id="heroRed"></div>
