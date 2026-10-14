@@ -4,7 +4,7 @@
    cache-busted URLs still resolve offline. localStorage (your
    data) is separate and untouched by cache updates.
    =========================================================== */
-const CACHE = "base-cache-v16";
+const CACHE = "base-cache-v17";
 const REMINDERS_CACHE = "base-reminders"; // SW-readable schedule mirror (kept across updates)
 const CORE = [
   "Home.html", "Plan.html", "Notes.html", "Calendar.html", "Budget.html",
@@ -96,27 +96,31 @@ self.addEventListener("fetch", (e) => {
   // let cross-origin (ESPN scores, weather APIs) always hit the network
   if (url.origin !== self.location.origin) return;
 
-  const isDoc = req.mode === "navigate" || (req.headers.get("accept") || "").includes("text/html");
-
-  if (isDoc) {
-    // network-first for pages, so updates show immediately when online
-    e.respondWith(
-      fetch(req).then((res) => {
-        if (res && res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
-        return res;
-      }).catch(() => caches.match(req, { ignoreSearch: true }).then((hit) => hit || caches.match("Home.html", { ignoreSearch: true })))
-    );
-    return;
-  }
-
-  // stale-while-revalidate for static assets: instant + offline, updates next load
-  e.respondWith(
-    caches.match(req, { ignoreSearch: true }).then((hit) => {
-      const fetchP = fetch(req).then((res) => {
-        if (res && res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
-        return res;
-      }).catch(() => hit);
-      return hit || fetchP;
-    })
-  );
+  // Network-first for EVERYTHING same-origin, so a deploy's HTML + CSS + JS
+  // always refresh together (no new-page-with-old-styles mismatch). A short
+  // timeout falls back to cache so slow networks / offline never hang.
+  e.respondWith(networkFirst(req));
 });
+
+function timedFetch(req, ms) {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error("timeout")), ms);
+    fetch(req).then((r) => { clearTimeout(t); resolve(r); }, (err) => { clearTimeout(t); reject(err); });
+  });
+}
+
+async function networkFirst(req) {
+  try {
+    const res = await timedFetch(req, 4500);
+    if (res && res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
+    return res;
+  } catch (e) {
+    const hit = await caches.match(req, { ignoreSearch: true });
+    if (hit) return hit;
+    if (req.mode === "navigate") {
+      const home = await caches.match("Home.html", { ignoreSearch: true });
+      if (home) return home;
+    }
+    throw e;
+  }
+}
