@@ -40,6 +40,18 @@ body.theme-dark .progress { background: #fff; }
   .ht-left { max-width: 100%; }
   .ht-weather { align-items: flex-start; text-align: left; }
 }
+/* Keep the hero's right-hand content clear of the fixed section rail (dotnav)
+   on anything wider than a phone — this is what overlapped on the unfolded Fold. */
+@media (min-width: 641px) {
+  .h-hero-top { padding-right: calc(var(--pad) + 56px); }
+}
+/* Unfolded foldables & small tablets (≈ Z Fold inner screen, iPad mini): give the
+   hero a calmer two-column rhythm and use the extra width instead of stretching. */
+@media (min-width: 641px) and (max-width: 1180px) {
+  .h-hero-top { top: 13vh; gap: 24px; }
+  .ht-left { max-width: 60%; }
+  .ht-left .greet { font-size: clamp(2.4rem, 6vw, 4rem); }
+}
 
 /* white statement that rides in over the red */
 .h-hero-statement {
@@ -183,7 +195,7 @@ html.hide-bar { scrollbar-width: none; }
 html.hide-bar::-webkit-scrollbar { width: 0; height: 0; display: none; }
 
 .dotnav {
-  position: fixed; right: clamp(10px, 2vw, 26px); top: 50%; transform: translateY(-50%);
+  position: fixed; right: max(clamp(10px, 2vw, 26px), env(safe-area-inset-right)); top: 50%; transform: translateY(-50%);
   z-index: 95; display: flex; flex-direction: column; gap: 14px; align-items: center;
   padding: 14px 8px; touch-action: none; cursor: none;
 }

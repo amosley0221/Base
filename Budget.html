@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>BASE — Budget</title>
 <script>try{var d=localStorage.getItem('base_theme')==='dark';if(d)document.documentElement.classList.add('mode-dark');var m=document.createElement('meta');m.name='theme-color';m.content=d?'#0E0F0B':'#FFFFFF';document.head.appendChild(m);}catch(e){}</script>
 <link rel="manifest" href="manifest.webmanifest" />
@@ -107,6 +107,35 @@
   .due-list .da { font-variant-numeric: tabular-nums; font-weight: 700; flex: 0 0 auto; }
   .cycle-in { flex: 0 0 120px; }
   .due-in { flex: 0 0 92px; }
+
+  /* monthly cash flow */
+  .cf-nav { display: inline-flex; align-items: center; gap: 10px; }
+  .cf-month { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 120px; text-align: center; }
+  .cf-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 4px 0 14px; }
+  @media (max-width: 760px) { .cf-tiles { grid-template-columns: repeat(2, 1fr); } }
+  .cf-tile { background: var(--paper); border: 1px solid var(--edge-soft); border-radius: 14px; padding: 15px; }
+  .cf-tile .v { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; }
+  .cf-tile .v.pos { color: var(--move); }
+  .cf-tile .v.neg { color: var(--red); }
+  .cf-tile .k { font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); margin-top: 8px; }
+  .cf-tile .s { font-size: 12px; color: var(--ink-faint); margin-top: 3px; }
+  .cf-note { margin: -2px 0 14px; font-size: 13px; }
+
+  /* paid / overdue rows + mark-paid toggle */
+  .due-row.paid { opacity: 0.5; }
+  .due-row.paid .dn { text-decoration: line-through; }
+  .dd-day.overdue { border-color: var(--red); color: var(--red); background: color-mix(in oklab, var(--red) 10%, var(--paper)); }
+  .dk .od { color: var(--red); font-weight: 600; }
+  .pay-btn { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 9px; border: 1px solid var(--edge); background: var(--white); color: var(--ink-soft); cursor: pointer; display: grid; place-items: center; font-size: 15px; line-height: 1; transition: all 0.2s var(--ease); }
+  .pay-btn:hover { border-color: var(--move); color: var(--move); }
+  .pay-btn.on { background: var(--move); border-color: var(--move); color: #fff; }
+
+  /* reminders */
+  .rem-toggle { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; cursor: pointer; padding: 8px 0 2px; }
+  .rem-toggle input { width: 18px; height: 18px; accent-color: var(--red); cursor: pointer; }
+  .rem-days { display: flex; align-items: center; gap: 10px; margin: 8px 0 4px; }
+  .rem-days .label { margin: 0; }
+  #remList:empty { display: none; }
 </style>
 </head>
 <body>
@@ -142,6 +171,31 @@
   <section class="card panel">
     <div class="panel-title"><h2>The numbers</h2><span class="hint">calculated live</span></div>
     <div class="calc-grid" id="calcGrid"></div>
+  </section>
+
+  <section class="card panel cashflow">
+    <div class="panel-title">
+      <h2>Monthly cash flow</h2>
+      <div class="cf-nav">
+        <button class="btn btn--ghost btn--sm" id="cfPrev" data-cursor aria-label="Previous month">←</button>
+        <span class="cf-month" id="cfMonth">—</span>
+        <button class="btn btn--ghost btn--sm" id="cfNext" data-cursor aria-label="Next month">→</button>
+      </div>
+    </div>
+    <div class="cf-tiles" id="cfTiles"></div>
+    <div class="cf-note muted" id="cfNote"></div>
+    <div class="due-list cf-sched" id="cfSched"></div>
+  </section>
+
+  <section class="card panel" id="remindPanel">
+    <div class="panel-title"><h2>Bill reminders</h2><span class="hint" id="remHint">notifications</span></div>
+    <label class="rem-toggle" for="remEnable"><input type="checkbox" id="remEnable" /> <span>Remind me before bills are due</span></label>
+    <div class="rem-days">
+      <label class="label" for="remDays">Days before</label>
+      <input class="field due-in" id="remDays" type="number" min="0" max="14" />
+    </div>
+    <p class="muted" id="remStatus"></p>
+    <div class="due-list" id="remList"></div>
   </section>
 
   <section class="card panel trends">
@@ -236,6 +290,7 @@
           <option value="monthly">Monthly</option>
           <option value="yearly">Yearly</option>
         </select>
+        <input class="field due-in" id="sbMonth" type="number" min="1" max="12" placeholder="month# (yearly)" title="Month of the year this yearly charge hits (1-12)" />
         <input class="field due-in" id="sbDue" type="number" min="1" max="31" placeholder="due day" />
         <button class="btn btn--red" id="addSub">Add</button>
       </div>
@@ -244,6 +299,7 @@
 </main>
 
 <script src="store.js"></script>
+<script src="reminders.js"></script>
 <script src="ui.js"></script>
 <script src="budget.js"></script>
 <script src="theme.js"></script>
