@@ -1,11 +1,10 @@
 name: Android APK Release
 
-# Cut a release by pushing a version tag, e.g.:
-#   git tag -a v1.0.0 -m "First release"
-#   git push origin v1.0.0
-# The workflow builds a signed APK and publishes it to the GitHub
-# Releases page with notes. You can also run it manually from the
-# Actions tab (workflow_dispatch) to test a build.
+# Two ways to cut a release:
+#  1) Push a version tag:   git tag -a v1.0.0 -m "notes"; git push origin v1.0.0
+#  2) Run manually from the Actions tab (workflow_dispatch): set the version
+#     and tick "publish" to create the tag + GitHub Release server-side.
+# Either way it builds a signed APK and attaches it to the Releases page.
 on:
   push:
     tags:
@@ -13,9 +12,14 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version name for a manual build (e.g. v0.0.1-test)"
-        required: false
-        default: "v0.0.0-manual"
+        description: "Version to build, e.g. v1.0.0"
+        required: true
+        default: "v1.0.0"
+      publish:
+        description: "Create the tag + GitHub Release (otherwise just build an artifact)"
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: write
@@ -42,22 +46,27 @@ jobs:
           # obsolete "tools" package, which no longer exists and breaks setup).
           packages: "platform-tools platforms;android-34 build-tools;34.0.0"
 
-      - name: Derive version name and code
-        id: ver
+      - name: Derive version, tag and release flag
         run: |
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
-            VERSION_NAME="${GITHUB_REF_NAME#v}"
+            TAG_NAME="${GITHUB_REF_NAME}"
+            DO_RELEASE="true"
           else
-            RAW="${{ github.event.inputs.version }}"
-            VERSION_NAME="${RAW#v}"
+            TAG_NAME="${{ github.event.inputs.version }}"
+            [ "${{ github.event.inputs.publish }}" = "true" ] && DO_RELEASE="true" || DO_RELEASE="false"
           fi
+          # Normalise: tag like v1.0.0, versionName like 1.0.0
+          case "$TAG_NAME" in v*) : ;; *) TAG_NAME="v$TAG_NAME" ;; esac
+          VERSION_NAME="${TAG_NAME#v}"
           # Strictly increasing integer required for in-place updates.
           VERSION_CODE="$(git rev-list --count HEAD)"
-          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
-          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
-          echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
-          echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
-          echo "Building versionName=$VERSION_NAME versionCode=$VERSION_CODE"
+          {
+            echo "TAG_NAME=$TAG_NAME"
+            echo "VERSION_NAME=$VERSION_NAME"
+            echo "VERSION_CODE=$VERSION_CODE"
+            echo "DO_RELEASE=$DO_RELEASE"
+          } >> "$GITHUB_ENV"
+          echo "Building $TAG_NAME (versionName=$VERSION_NAME versionCode=$VERSION_CODE) release=$DO_RELEASE"
 
       - name: Decode signing keystore
         env:
@@ -86,7 +95,7 @@ jobs:
           if [ ! -f "$SRC" ]; then
             echo "::error::Signed APK not found at $SRC"; find android/app/build/outputs -name '*.apk' -print || true; exit 1
           fi
-          OUT="BASE-v${VERSION_NAME}.apk"
+          OUT="BASE-${TAG_NAME}.apk"
           cp "$SRC" "$OUT"
           echo "APK_PATH=$OUT" >> "$GITHUB_ENV"
           ls -la "$OUT"
@@ -99,24 +108,25 @@ jobs:
           if-no-files-found: error
 
       - name: Resolve release notes
-        if: github.ref_type == 'tag'
+        if: env.DO_RELEASE == 'true'
         run: |
-          # Prefer a hand-written notes file: release-notes/<tag>.md
-          NOTES_FILE="release-notes/${GITHUB_REF_NAME}.md"
+          NOTES_FILE="release-notes/${TAG_NAME}.md"
           if [ -f "$NOTES_FILE" ]; then
             cp "$NOTES_FILE" "$RUNNER_TEMP/notes.md"
+          elif [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            git tag -l --format='%(contents)' "${TAG_NAME}" > "$RUNNER_TEMP/notes.md"
           else
-            # Fall back to the annotated tag message.
-            git tag -l --format='%(contents)' "${GITHUB_REF_NAME}" > "$RUNNER_TEMP/notes.md"
+            printf 'BASE %s\n' "$TAG_NAME" > "$RUNNER_TEMP/notes.md"
           fi
           echo "NOTES_PATH=$RUNNER_TEMP/notes.md" >> "$GITHUB_ENV"
 
       - name: Publish GitHub Release
-        if: github.ref_type == 'tag'
+        if: env.DO_RELEASE == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          name: BASE ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
+          name: BASE ${{ env.TAG_NAME }}
+          tag_name: ${{ env.TAG_NAME }}
+          target_commitish: ${{ github.sha }}
           body_path: ${{ env.NOTES_PATH }}
           generate_release_notes: true
           files: ${{ env.APK_PATH }}
