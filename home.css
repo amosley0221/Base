@@ -490,6 +490,8 @@ body.modal-open { overflow: hidden; }
   .sec-open { display: inline-flex; align-items: center; margin-top: 20px; font-size: 14px; font-weight: 600; color: var(--red); text-decoration: none; letter-spacing: 0.02em; transition: opacity 0.2s var(--ease); }
   .sec-open:hover { opacity: 0.75; }
   .notes-head .sec-open { margin-top: 12px; }
-  /* no stray horizontal scroll / right-edge gap on wide (clip keeps sticky FX working) */
-  body { overflow-x: clip; }
+  /* no stray horizontal scroll / right-edge gap on wide. Clip at the real
+     root scroller (html); clipping body instead forces body's overflow-y to
+     auto, which breaks the window-scroll animations and doesn't clip. */
+  html { overflow-x: clip; }
 }
