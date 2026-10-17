@@ -81,22 +81,54 @@ window.Sports = (function () {
   }
 
   // fetch the full team list for a league (for the Plan picker)
-  async function teamList(sport, league) {
+  function dedupeSortTeams(arr) {
+    const seen = new Set(), out = [];
+    arr.forEach((t) => { if (t && t.id && !seen.has(String(t.id))) { seen.add(String(t.id)); out.push({ id: String(t.id), name: t.name, abbr: t.abbr || "" }); } });
+    out.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    return out;
+  }
+  // The /teams endpoint (complete roster of a league). limit=1000 covers the
+  // big college leagues; handles both wrapped ({team:{}}) and flat shapes.
+  async function teamsEndpoint(sport, league) {
     try {
-      const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/teams`;
-      const r = await fetch(url);
-      const d = await r.json();
+      const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/teams?limit=1000`;
+      const d = await (await fetch(url)).json();
       const teams = [];
       (d.sports || []).forEach((s) =>
         (s.leagues || []).forEach((l) =>
           (l.teams || []).forEach((t) => {
-            if (t.team) teams.push({ id: t.team.id, name: t.team.shortDisplayName || t.team.displayName, abbr: t.team.abbreviation });
+            const tm = t.team || t;
+            if (tm && tm.id) teams.push({ id: tm.id, name: tm.shortDisplayName || tm.displayName || tm.name, abbr: tm.abbreviation });
           })
         )
       );
-      teams.sort((a, b) => a.name.localeCompare(b.name));
-      return teams;
+      return dedupeSortTeams(teams);
     } catch (e) { return []; }
+  }
+  // Fallback: pull the team roster out of the standings feed (same data path
+  // that powers live scores, so it works wherever scores do).
+  async function teamsFromStandings(sport, league) {
+    try {
+      const url = `https://site.api.espn.com/apis/v2/sports/${sport}/${league}/standings?level=1`;
+      const d = await (await fetch(url)).json();
+      const teams = [];
+      (function walk(node) {
+        if (!node) return;
+        if (node.standings && node.standings.entries) {
+          node.standings.entries.forEach((e) => {
+            const t = e.team || {};
+            if (t.id) teams.push({ id: t.id, name: t.shortDisplayName || t.displayName || t.name, abbr: t.abbreviation });
+          });
+        }
+        (node.children || []).forEach(walk);
+      })(d);
+      return dedupeSortTeams(teams);
+    } catch (e) { return []; }
+  }
+  async function teamList(sport, league) {
+    const primary = await teamsEndpoint(sport, league);
+    if (primary.length) return primary;
+    return await teamsFromStandings(sport, league);
   }
 
   function logoFrom(team) {

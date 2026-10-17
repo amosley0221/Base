@@ -8,7 +8,8 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:allowBackup="true"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Base">
 
         <!-- Links this app to the website via Digital Asset Links. -->
         <meta-data
