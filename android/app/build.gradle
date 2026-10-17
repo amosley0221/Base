@@ -1,27 +1,25 @@
-plugins {
-    id 'com.android.application'
-}
+apply plugin: 'com.android.application'
 
 android {
-    namespace 'com.amosley.base'
-    compileSdk 34
-
+    namespace = "com.amosley.base"
+    compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        // applicationId is PERMANENT. Changing it breaks in-place updates.
         applicationId "com.amosley.base"
-        minSdk 23
-        targetSdk 34
-
-        // Driven by CI. versionCode MUST strictly increase every release,
-        // or Android refuses to install the update over the existing app.
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode = (System.getenv("VERSION_CODE") ?: "1").toInteger()
         versionName = System.getenv("VERSION_NAME") ?: "1.0.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
     }
-
     signingConfigs {
         release {
-            // Populated from environment in CI (decoded from a GitHub Secret).
-            // Falls back gracefully for local unsigned builds.
+            // Populated from env in CI (keystore decoded from a GitHub Secret);
+            // same key + applicationId as before, so updates install over the top.
             def ksPath = System.getenv("ANDROID_KEYSTORE_PATH")
             if (ksPath) {
                 storeFile file(ksPath)
@@ -31,25 +29,42 @@ android {
             }
         }
     }
-
     buildTypes {
         release {
             minifyEnabled false
-            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             if (System.getenv("ANDROID_KEYSTORE_PATH")) {
                 signingConfig signingConfigs.release
             }
         }
     }
+}
 
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
     }
 }
 
 dependencies {
-    // Google's Trusted Web Activity support library — launches the PWA
-    // full-screen in a Chrome-backed container.
-    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }

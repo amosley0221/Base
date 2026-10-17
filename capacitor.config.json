@@ -1,0 +1,15 @@
+{
+  "appId": "com.amosley.base",
+  "appName": "BASE",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#0E0F0B"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 500,
+      "backgroundColor": "#0E0F0B",
+      "showSpinner": false
+    }
+  }
+}

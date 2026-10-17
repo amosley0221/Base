@@ -1,10 +1,8 @@
 name: Android APK Release
 
-# Two ways to cut a release:
-#  1) Push a version tag:   git tag -a v1.0.0 -m "notes"; git push origin v1.0.0
-#  2) Run manually from the Actions tab (workflow_dispatch): set the version
-#     and tick "publish" to create the tag + GitHub Release server-side.
-# Either way it builds a signed APK and attaches it to the Releases page.
+# Capacitor build: the web app (www/) is bundled into the APK.
+# Release by pushing a version tag (git tag -a v1.1.0 -m "notes"; git push origin v1.1.0)
+# or from the Actions tab (set version + tick publish).
 on:
   push:
     tags:
@@ -12,9 +10,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to build, e.g. v1.0.0"
+        description: "Version to build, e.g. v1.1.0"
         required: true
-        default: "v1.0.0"
+        default: "v1.1.0"
       publish:
         description: "Create the tag + GitHub Release (otherwise just build an artifact)"
         type: boolean
@@ -33,18 +31,24 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up JDK 17
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          # Pin the exact packages (the action's default list includes the
-          # obsolete "tools" package, which no longer exists and breaks setup).
-          packages: "platform-tools platforms;android-34 build-tools;34.0.0"
+          packages: "platform-tools platforms;android-36 build-tools;36.0.0"
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Derive version, tag and release flag
         run: |
@@ -55,10 +59,8 @@ jobs:
             TAG_NAME="${{ github.event.inputs.version }}"
             [ "${{ github.event.inputs.publish }}" = "true" ] && DO_RELEASE="true" || DO_RELEASE="false"
           fi
-          # Normalise: tag like v1.0.0, versionName like 1.0.0
           case "$TAG_NAME" in v*) : ;; *) TAG_NAME="v$TAG_NAME" ;; esac
           VERSION_NAME="${TAG_NAME#v}"
-          # Strictly increasing integer required for in-place updates.
           VERSION_CODE="$(git rev-list --count HEAD)"
           {
             echo "TAG_NAME=$TAG_NAME"
@@ -68,12 +70,17 @@ jobs:
           } >> "$GITHUB_ENV"
           echo "Building $TAG_NAME (versionName=$VERSION_NAME versionCode=$VERSION_CODE) release=$DO_RELEASE"
 
+      - name: Stage web app + sync Capacitor
+        run: |
+          npm run copy:web
+          npx cap sync android
+
       - name: Decode signing keystore
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "::error::Missing secret ANDROID_KEYSTORE_BASE64. Add the four ANDROID_* secrets (see android/README.md)."
+            echo "::error::Missing secret ANDROID_KEYSTORE_BASE64. Add the four ANDROID_* secrets."
             exit 1
           fi
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/base-release.keystore"

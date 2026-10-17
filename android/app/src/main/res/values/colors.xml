@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Matches the PWA theme: theme_color #E8281E, background_color #0E0F0B -->
-    <color name="colorPrimary">#E8281E</color>
-    <color name="colorPrimaryDark">#0E0F0B</color>
-    <color name="backgroundColor">#0E0F0B</color>
-</resources>
