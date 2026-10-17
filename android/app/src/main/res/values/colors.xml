@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- BASE dark background — used for the app window so the transparent
+         system bars (edge-to-edge) show dark and match the app. -->
+    <color name="baseBackground">#0E0F0B</color>
+</resources>
