@@ -579,6 +579,18 @@ ${items}
   renderTasks(); renderHabits(); renderNotes(); renderWeek(); renderBudget(); renderSchool();
   loadWeather(); renderScores();
 
+  // On wide screens the section-dot rail is hidden, so give each section a
+  // direct "Open" link to its full page (e.g. Scoreboard → edit teams).
+  $$("section[data-href]").forEach((sec) => {
+    const head = sec.querySelector(".sec-head") || sec.querySelector(".notes-head");
+    if (head && !head.querySelector(".sec-open")) {
+      const a = document.createElement("a");
+      a.className = "sec-open"; a.href = sec.dataset.href; a.textContent = "Open →";
+      a.setAttribute("data-cursor", "");
+      head.appendChild(a);
+    }
+  });
+
   // ===================== DOT NAV =====================
   document.documentElement.classList.add("hide-bar");
   const dotnav = $("#dotnav");

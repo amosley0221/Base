@@ -482,3 +482,14 @@ body.modal-open { overflow: hidden; }
   .ht-weather .hero-glance .gc.gc-alert { border-color: color-mix(in oklab, var(--red) 45%, var(--edge)); }
   .ht-weather .hero-glance .gc.gc-alert .gc-v { color: var(--red); }
 }
+
+/* Per-section "Open" link — the page navigation that the dot-rail gave us,
+   restored for wide screens where the rail is hidden. */
+.sec-open { display: none; }
+@media (min-width: 820px) {
+  .sec-open { display: inline-flex; align-items: center; margin-top: 20px; font-size: 14px; font-weight: 600; color: var(--red); text-decoration: none; letter-spacing: 0.02em; transition: opacity 0.2s var(--ease); }
+  .sec-open:hover { opacity: 0.75; }
+  .notes-head .sec-open { margin-top: 12px; }
+  /* no stray horizontal scroll / right-edge gap on wide (clip keeps sticky FX working) */
+  body { overflow-x: clip; }
+}

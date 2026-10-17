@@ -89,21 +89,30 @@ window.Sports = (function () {
   }
   // The /teams endpoint (complete roster of a league). limit=1000 covers the
   // big college leagues; handles both wrapped ({team:{}}) and flat shapes.
+  function parseTeamsPayload(d) {
+    const teams = [];
+    (d.sports || []).forEach((s) =>
+      (s.leagues || []).forEach((l) =>
+        (l.teams || []).forEach((t) => {
+          const tm = t.team || t;
+          if (tm && tm.id) teams.push({ id: tm.id, name: tm.shortDisplayName || tm.displayName || tm.name, abbr: tm.abbreviation });
+        })
+      )
+    );
+    return teams;
+  }
   async function teamsEndpoint(sport, league) {
-    try {
-      const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/teams?limit=1000`;
-      const d = await (await fetch(url)).json();
-      const teams = [];
-      (d.sports || []).forEach((s) =>
-        (s.leagues || []).forEach((l) =>
-          (l.teams || []).forEach((t) => {
-            const tm = t.team || t;
-            if (tm && tm.id) teams.push({ id: tm.id, name: tm.shortDisplayName || tm.displayName || tm.name, abbr: tm.abbreviation });
-          })
-        )
-      );
-      return dedupeSortTeams(teams);
-    } catch (e) { return []; }
+    const base = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/teams`;
+    // try with a high limit (covers big college leagues), then plain (some
+    // leagues — e.g. soccer — behave differently with the limit param).
+    for (const url of [base + "?limit=1000", base]) {
+      try {
+        const d = await (await fetch(url)).json();
+        const teams = dedupeSortTeams(parseTeamsPayload(d));
+        if (teams.length) return teams;
+      } catch (e) { /* try next */ }
+    }
+    return [];
   }
   // Fallback: pull the team roster out of the standings feed (same data path
   // that powers live scores, so it works wherever scores do).
