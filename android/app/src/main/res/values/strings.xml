@@ -1,7 +1,7 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="appName">BASE</string>
-    <string name="launchUrl">https://base-homebase.onrender.com/</string>
-    <string name="hostName">base-homebase.onrender.com</string>
-    <string name="asset_statements">[{ \"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": { \"namespace\": \"web\", \"site\": \"https://base-homebase.onrender.com\" } }]</string>
+    <string name="app_name">BASE</string>
+    <string name="title_activity_main">BASE</string>
+    <string name="package_name">com.amosley.base</string>
+    <string name="custom_url_scheme">com.amosley.base</string>
 </resources>

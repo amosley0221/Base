@@ -3,7 +3,13 @@
    =========================================================== */
 (function () {
   "use strict";
-  if ("serviceWorker" in navigator) {
+  // Running inside the native (Capacitor) app?
+  const IS_NATIVE = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === "function" && window.Capacitor.isNativePlatform());
+
+  // Service worker is for the website/PWA. In the native app the web assets are
+  // bundled in the APK, so a SW cache would only risk serving stale files after
+  // an update — skip it there.
+  if ("serviceWorker" in navigator && !IS_NATIVE) {
     window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
   }
 
@@ -42,6 +48,7 @@
      and exits when folded back to portrait.
      --------------------------------------------------------- */
   (function () {
+    if (IS_NATIVE) return; // native app colors the status bar instead of hiding it
     const WIDE = () => window.matchMedia("(min-width: 820px)").matches;
     const root = document.documentElement;
     const req = root.requestFullscreen || root.webkitRequestFullscreen;

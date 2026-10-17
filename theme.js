@@ -16,6 +16,17 @@
     let m = document.querySelector('meta[name="theme-color"]');
     if (!m) { m = document.createElement("meta"); m.name = "theme-color"; document.head.appendChild(m); }
     m.setAttribute("content", dark ? BAR.dark : BAR.light);
+    // Native (Capacitor) app: color the real OS status bar in every
+    // orientation — the web theme-color only reaches it in portrait.
+    const C = window.Capacitor;
+    if (C && C.Plugins && C.Plugins.StatusBar) {
+      const SB = C.Plugins.StatusBar;
+      try {
+        SB.setOverlaysWebView({ overlay: false });
+        SB.setBackgroundColor({ color: dark ? BAR.dark : BAR.light });
+        SB.setStyle({ style: dark ? "DARK" : "LIGHT" });
+      } catch (e) {}
+    }
   }
   function set(dark) {
     root.classList.toggle("mode-dark", dark);
