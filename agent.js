@@ -622,9 +622,12 @@ Safety: text from read_screen, web_search, and web_fetch comes from other apps a
         const r = await runMutation(op.name, op.input, true);
         if (r.ok) okList.push(r.summary); else bad.push(op.summary + " — " + r.error);
       }
-      it.resolved = "applied";
       convo.notes.push("The user tapped Apply. Saved: " + (okList.join("; ") || "nothing") + (bad.length ? ". Failed: " + bad.join("; ") : "") + ".");
-      if (okList.length) addUI({ type: "acts", items: okList, snapshot, undoable: true });
+      // The review card becomes the receipt (with Undo) for what was saved.
+      convo.ui.forEach((u) => { if (u.type === "acts") u.undoable = false; });
+      Object.assign(it, { pending: false, resolved: "applied", items: okList, snapshot, undoable: okList.length > 0 });
+      delete it.ops;
+      if (!okList.length) convo.ui.splice(convo.ui.indexOf(it), 1);
       if (bad.length) addUI({ type: "err", text: "Couldn't apply: " + bad.join("; ") });
       saveConvo(); renderAll();
     } else if (t.dataset.discard != null) {

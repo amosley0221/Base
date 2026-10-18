@@ -115,4 +115,39 @@
     });
     $("#aiClear").addEventListener("click", () => { AI.setKey(""); aiKey.value = ""; refreshAi(); toast("Key cleared"); });
   }
+
+  // ---------- FLOATING AGENT (Android app) ----------
+  const CAP = window.Capacitor;
+  const AGT = CAP && CAP.isNativePlatform && CAP.isNativePlatform() && CAP.Plugins ? CAP.Plugins.BaseAgent : null;
+  const agStatus = $("#agStatus");
+  if (!AGT) { $("#agWeb").classList.remove("hidden"); }
+  else {
+    $("#agNative").classList.remove("hidden");
+    const step = (k, ok) => { const li = $(`#agSteps [data-step="${k}"]`); if (li) li.classList.toggle("done", !!ok); };
+    async function refreshAgent() {
+      let st;
+      try { st = await AGT.status(); } catch (e) { return; }
+      const key = AI && AI.hasKey();
+      step("key", key);
+      step("restricted", st.accessibility);
+      step("a11y", st.accessibility);
+      step("notif", st.notifications);
+      $("#agBubble").checked = !!st.bubble;
+      const ready = key && st.accessibility;
+      agStatus.innerHTML = "<i></i> " + (ready ? (st.bubble ? "On" : "Hidden") : "Needs setup");
+      agStatus.classList.toggle("ok", !!ready && !!st.bubble);
+    }
+    $("#agBubble").addEventListener("change", async (e) => {
+      try { await AGT.setBubble({ enabled: e.target.checked }); } catch (err) {}
+      toast(e.target.checked ? "Agent on" : "Agent hidden");
+      refreshAgent();
+    });
+    document.querySelectorAll("#agSteps [data-open]").forEach((b) => b.addEventListener("click", () => {
+      const fn = AGT[b.dataset.open];
+      if (fn) fn.call(AGT).catch(() => toast("Couldn't open that settings page"));
+    }));
+    if (aiKey) $("#aiSave").addEventListener("click", () => setTimeout(refreshAgent, 50));
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refreshAgent(); });
+    refreshAgent();
+  }
 })();
