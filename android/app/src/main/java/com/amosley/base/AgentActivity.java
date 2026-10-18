@@ -54,7 +54,8 @@ public class AgentActivity extends BridgeActivity {
 
             JSONObject server = json.optJSONObject("server");
             if (server == null) server = new JSONObject();
-            server.put("appStartPath", "agent.html");
+            // Appended straight onto "https://localhost", so it needs the leading slash.
+            server.put("appStartPath", "/agent.html");
             json.put("server", server);
 
             JSONObject android = json.optJSONObject("android");
