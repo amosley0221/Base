@@ -110,7 +110,8 @@
 
   /* monthly cash flow */
   .cf-nav { display: inline-flex; align-items: center; gap: 10px; }
-  .cf-month { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 120px; text-align: center; }
+  .cf-month { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 0; text-align: center; white-space: nowrap; }
+  .cashflow > .panel-title { flex-wrap: wrap; gap: 10px 16px; }
   .cf-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 4px 0 14px; }
   @media (max-width: 760px) { .cf-tiles { grid-template-columns: repeat(2, 1fr); } }
   .cf-tile { background: var(--paper); border: 1px solid var(--edge-soft); border-radius: 14px; padding: 15px; }

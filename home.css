@@ -121,13 +121,14 @@ body.theme-dark .progress { background: #fff; }
 
 /* ===================== HABITS ===================== */
 .habits-wrap { background: var(--paper); }
-.habit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-@media (max-width: 720px) { .habit-grid { grid-template-columns: 1fr; } }
+/* Two cards per row only when each can be ≥280px; otherwise one per row.
+   (Fixed two columns overflowed the page on the unfolded Fold.) */
+.habit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 18px; }
 .habit {
   background: var(--white); border: 1px solid var(--edge-soft); border-radius: 18px; padding: 22px;
-  display: flex; flex-direction: column; gap: 16px;
+  display: flex; flex-direction: column; gap: 16px; min-width: 0;
 }
-.habit .h-top { display: flex; align-items: baseline; justify-content: space-between; }
+.habit .h-top { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; }
 .habit .h-top .name { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.01em; }
 .habit .h-top .meta { font-size: 13px; color: var(--ink-soft); }
 .habit .meta .streak { color: var(--red); font-weight: 500; }
@@ -157,9 +158,10 @@ body.theme-dark .progress { background: #fff; }
 
 /* ===================== WEEK ===================== */
 .week-wrap { background: var(--paper); }
-.week-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 40px; }
-@media (max-width: 720px) { .week-strip { grid-template-columns: repeat(7, 1fr); gap: 5px; } }
+.week-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; margin-bottom: 40px; }
+@media (max-width: 720px) { .week-strip { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; } }
 .week-day {
+  min-width: 0;
   border: 1px solid var(--edge-soft); border-radius: 14px; background: var(--white);
   padding: 14px 10px; text-align: center; min-height: 96px; display: flex; flex-direction: column; gap: 8px;
 }
@@ -261,8 +263,8 @@ body.theme-dark .dotnav.dragging { background: rgba(0,0,0,0.18); }
 .day-detail { margin-top: 40px; }
 .dd-name { font-size: 1.4rem; margin-bottom: 22px; letter-spacing: -0.02em; }
 .dd-name .tag { font-size: 0.8rem; color: var(--red); letter-spacing: 0.08em; text-transform: uppercase; margin-left: 10px; }
-.dd-cols { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 22px; align-items: start; }
-@media (max-width: 860px) { .dd-cols { grid-template-columns: 1fr; } }
+.dd-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 22px; align-items: start; }
+.dd-group { min-width: 0; }
 .dd-group h3 { font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 14px; }
 .dd-group .row { padding: 11px 2px; }
 .dd-empty { color: var(--ink-faint); font-size: 14px; padding: 8px 0; }
