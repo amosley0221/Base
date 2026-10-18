@@ -21,11 +21,13 @@ for (const name of readdirSync(ROOT)) {
   if (!statSync(p).isFile()) continue;
   if (WEB_EXT.has(extname(name))) copyFileSync(p, join(OUT, name));
 }
-// icons/
-try {
-  mkdirSync(join(OUT, "icons"), { recursive: true });
-  for (const name of readdirSync(join(ROOT, "icons"))) copyFileSync(join(ROOT, "icons", name), join(OUT, "icons", name));
-} catch {}
+// icons/ and vendor/ (the bundled Anthropic SDK for the agent)
+for (const dir of ["icons", "vendor"]) {
+  try {
+    mkdirSync(join(OUT, dir), { recursive: true });
+    for (const name of readdirSync(join(ROOT, dir))) copyFileSync(join(ROOT, dir, name), join(OUT, dir, name));
+  } catch {}
+}
 
 // Capacitor loads index.html; send it straight to Home.html
 writeFileSync(join(OUT, "index.html"),

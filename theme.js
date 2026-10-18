@@ -27,6 +27,10 @@
         SB.setStyle({ style: dark ? "DARK" : "LIGHT" });
       } catch (e) {}
     }
+    // Floating agent mascot: green in dark mode, red in light.
+    if (C && C.Plugins && C.Plugins.BaseAgent) {
+      try { C.Plugins.BaseAgent.setTheme({ dark: !!dark }).catch(() => {}); } catch (e) {}
+    }
   }
   function set(dark) {
     root.classList.toggle("mode-dark", dark);

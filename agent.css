@@ -1,0 +1,110 @@
+/* ===========================================================
+   BASE — agent sheet (opens over other apps on Android)
+   The page itself is transparent; only the sheet is painted.
+   =========================================================== */
+html, body.agent-body { background: transparent !important; height: 100%; overflow: hidden; }
+body.agent-body { margin: 0; font-family: var(--font); color: var(--ink); }
+.hidden { display: none !important; }
+
+.ag-scrim {
+  position: fixed; inset: 0; background: rgba(8, 9, 6, 0.32);
+  opacity: 0; transition: opacity 0.25s var(--ease);
+}
+.ag-sheet {
+  position: fixed; left: 50%; bottom: 0;
+  width: min(100%, 600px);
+  height: min(78vh, 680px);
+  height: min(78dvh, 680px);
+  transform: translate(-50%, 104%);
+  transition: transform 0.36s var(--ease);
+  background: var(--white);
+  border-radius: 26px 26px 0 0;
+  box-shadow: 0 -18px 50px -20px rgba(0, 0, 0, 0.45);
+  display: flex; flex-direction: column;
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  overflow: hidden;
+}
+body.open .ag-scrim { opacity: 1; }
+body.open .ag-sheet { transform: translate(-50%, 0); }
+/* Fold unfolded / tablets: a floating card instead of a full-width sheet */
+@media (min-width: 700px) {
+  .ag-sheet { bottom: 18px; border-radius: 26px; height: min(74vh, 700px); }
+}
+
+.ag-head { display: flex; align-items: center; gap: 10px; padding: 14px 12px 10px 16px; border-bottom: 1px solid var(--edge-soft); }
+.ag-head::before {
+  content: ""; position: absolute; top: 7px; left: 50%; width: 38px; height: 4px; margin-left: -19px;
+  border-radius: 4px; background: var(--edge);
+}
+.ag-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ag-title strong { font-size: 16px; letter-spacing: 0.08em; }
+.ag-ctx {
+  align-self: flex-start; max-width: 100%;
+  font: inherit; font-size: 12px; color: var(--ink-soft); cursor: pointer;
+  background: var(--paper); border: 1px solid var(--edge); border-radius: 100px; padding: 3px 10px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ag-ctx::before { content: "●"; color: var(--red); margin-right: 6px; font-size: 9px; vertical-align: 1px; }
+.ag-ctx.off { text-decoration: line-through; opacity: 0.7; }
+.ag-ctx.off::before { color: var(--ink-faint); }
+.ag-icon {
+  width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--edge); background: transparent;
+  color: var(--ink-soft); font-size: 16px; cursor: pointer; display: grid; place-items: center; flex: none;
+}
+.ag-icon:active { background: var(--paper); }
+
+/* mascot (CSS version of the floating blob) */
+.ag-blob {
+  width: 38px; height: 36px; flex: none; position: relative;
+  background: radial-gradient(circle at 32% 26%, color-mix(in oklab, var(--red) 62%, white), var(--red) 70%);
+  border-radius: 52% 52% 46% 46% / 58% 58% 42% 42%;
+  animation: ag-breathe 2.4s ease-in-out infinite alternate;
+}
+.ag-blob i { position: absolute; top: 36%; width: 7px; height: 9px; border-radius: 50%; background: #fff; }
+.ag-blob i::after { content: ""; position: absolute; left: 2px; top: 3px; width: 4px; height: 4px; border-radius: 50%; background: #14160F; }
+.ag-blob i:nth-child(1) { left: 26%; } .ag-blob i:nth-child(2) { right: 26%; }
+.ag-blob b { position: absolute; left: 50%; top: 62%; width: 9px; height: 4px; margin-left: -4.5px; border: 2px solid #14160F; border-top: 0; border-radius: 0 0 9px 9px; }
+.ag-blob.busy { animation: ag-bob 0.7s ease-in-out infinite alternate; }
+@keyframes ag-breathe { to { transform: scale(1.04, 0.96); } }
+@keyframes ag-bob { to { transform: translateY(-3px) scale(1.03, 0.97); } }
+
+.ag-log { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 14px 8px; display: flex; flex-direction: column; gap: 10px; overscroll-behavior: contain; }
+.ag-msg { max-width: 86%; padding: 10px 14px; border-radius: 18px; font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; }
+.ag-msg.user { align-self: flex-end; background: var(--red); color: #fff; border-bottom-right-radius: 6px; white-space: pre-wrap; }
+.ag-msg.bot { align-self: flex-start; background: var(--paper); border-bottom-left-radius: 6px; }
+.ag-msg.bot p { margin: 0 0 8px; } .ag-msg.bot p:last-child { margin-bottom: 0; }
+.ag-msg.bot ul { margin: 4px 0 8px 18px; } .ag-msg.bot li { margin: 2px 0; }
+.ag-msg.bot a { color: var(--red); }
+.ag-msg.note { align-self: center; background: none; color: var(--ink-faint); font-size: 13px; padding: 2px 8px; text-align: center; }
+.ag-msg.err { align-self: flex-start; background: var(--red-wash); color: var(--ink); font-size: 14px; }
+.ag-typing { display: inline-flex; gap: 4px; padding: 4px 2px; }
+.ag-typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-faint); animation: ag-dot 1s infinite; }
+.ag-typing i:nth-child(2) { animation-delay: 0.15s; } .ag-typing i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes ag-dot { 50% { opacity: 0.3; transform: translateY(-3px); } }
+
+/* "what I changed" receipts + confirm card */
+.ag-acts { align-self: flex-start; max-width: 90%; border: 1px solid var(--edge); border-radius: 14px; padding: 8px 12px; font-size: 13.5px; background: var(--white); }
+.ag-acts .row1 { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; }
+.ag-acts .row1::before { content: "✓"; color: var(--move); font-weight: 700; }
+.ag-acts.pending .row1::before { content: "•"; color: var(--red); }
+.ag-acts .btns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.ag-acts .head { font-weight: 600; margin-bottom: 4px; }
+.ag-mini { font: inherit; font-size: 13px; padding: 6px 14px; border-radius: 100px; border: 1px solid var(--edge); background: transparent; color: var(--ink); cursor: pointer; }
+.ag-mini.primary { background: var(--red); border-color: var(--red); color: #fff; }
+.ag-mini:disabled { opacity: 0.5; }
+
+.ag-chips { display: flex; gap: 8px; overflow-x: auto; padding: 4px 14px 8px; scrollbar-width: none; }
+.ag-chips::-webkit-scrollbar { display: none; }
+.ag-chips button { flex: none; font: inherit; font-size: 13px; padding: 7px 13px; border-radius: 100px; border: 1px solid var(--edge); background: var(--paper); color: var(--ink); cursor: pointer; }
+
+.ag-input { display: flex; align-items: flex-end; gap: 8px; padding: 8px 12px 12px; border-top: 1px solid var(--edge-soft); }
+.ag-input textarea {
+  flex: 1; min-width: 0; resize: none; max-height: 132px;
+  font: inherit; font-size: 16px; line-height: 1.4; color: var(--ink);
+  background: var(--paper); border: 1px solid var(--edge); border-radius: 20px; padding: 10px 14px; outline: none;
+}
+.ag-input textarea:focus { border-color: var(--red); }
+.ag-send { width: 42px; height: 42px; flex: none; border-radius: 50%; border: 0; background: var(--red); color: #fff; font-size: 19px; cursor: pointer; }
+.ag-send:disabled { opacity: 0.45; }
+.ag-setup { align-self: stretch; background: var(--paper); border-radius: 16px; padding: 14px 16px; font-size: 14px; line-height: 1.5; }
+.ag-setup input { width: 100%; margin: 10px 0; font: inherit; font-size: 15px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--edge); background: var(--white); color: var(--ink); }

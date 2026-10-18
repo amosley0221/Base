@@ -24,6 +24,15 @@
   .ios-steps { font-size: 13.5px; color: var(--ink-soft); line-height: 1.6; margin-top: 14px; padding: 14px 16px; background: var(--paper); border-radius: 12px; max-width: 60ch; }
   .ios-steps b { color: var(--ink); }
   .hidden { display: none !important; }
+  .ag-steps { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; max-width: 64ch; }
+  .ag-steps li { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: start; gap: 8px 12px; padding: 12px 14px; border: 1px solid var(--edge); border-radius: 14px; }
+  .ag-steps li > div > b { display: block; font-size: 15px; }
+  .ag-steps li small b { color: var(--ink); }
+  .ag-steps li small { display: block; font-size: 13px; color: var(--ink-soft); line-height: 1.45; margin-top: 2px; }
+  .ag-steps .dot { width: 22px; height: 22px; flex: none; border-radius: 50%; border: 2px solid var(--edge); display: grid; place-items: center; font-size: 12px; color: #fff; }
+  .ag-steps li.done .dot { background: var(--move); border-color: var(--move); }
+  .ag-steps li.done .dot::after { content: "✓"; }
+  .ag-steps li .btn { grid-column: 2; justify-self: start; }
   .pdf-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 22px; margin-bottom: 20px; }
   @media (max-width: 560px) { .pdf-grid { grid-template-columns: 1fr; } }
   .chk { display: flex; align-items: center; gap: 11px; padding: 9px 2px; cursor: pointer; font-size: 15px; }
@@ -71,12 +80,28 @@
 
   <!-- AI ASSISTANT -->
   <section class="card panel">
-    <div class="panel-title"><h2>AI essay assistant</h2><span class="set-status" id="aiStatus"><i></i> Not set</span></div>
-    <p class="note">On the <a href="School.html">School</a> page, mark an assignment as <b>Essay</b> and BASE can draft it for you with Claude — using your own Anthropic API key. The key is stored <b>only on this device</b> and is never included in backups. Get one at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a> (requires billing/credit). Drafts are starting points to revise, not finished work.</p>
+    <div class="panel-title"><h2>Claude AI</h2><span class="set-status" id="aiStatus"><i></i> Not set</span></div>
+    <p class="note">Powers the floating agent below, and on the <a href="School.html">School</a> page BASE can draft essays for you — using your own Anthropic API key. The key is stored <b>only on this device</b> and is never included in backups. Get one at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a> (requires billing/credit). Drafts are starting points to revise, not finished work.</p>
     <div class="btn-row" style="gap:8px;align-items:center;flex-wrap:wrap">
       <input class="field" id="aiKey" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false" style="flex:1;min-width:220px" />
       <button class="btn btn--red" id="aiSave" data-cursor>Save key</button>
       <button class="btn btn--ghost btn--sm" id="aiClear" data-cursor>Clear</button>
+    </div>
+  </section>
+
+  <!-- FLOATING AGENT -->
+  <section class="card panel" id="agentPanel">
+    <div class="panel-title"><h2>Floating agent</h2><span class="set-status" id="agStatus"><i></i> Android app only</span></div>
+    <p class="note">A little BASE buddy that floats over your other apps. <b>Tap it to ask anything</b>: it can read the app or page you're looking at, update your account balances, add bills and set reminders. Drag it to move it; long-press to hide it until you next unlock. Your screen is only read when you tap it, and it's sent to Claude with your question using the key above.</p>
+    <div id="agWeb" class="ios-steps hidden">The floating agent needs the BASE Android app. In a browser you can still chat at <a href="agent.html">agent.html</a>.</div>
+    <div id="agNative" class="hidden">
+      <label class="chk" for="agBubble"><input type="checkbox" id="agBubble" /><span class="box"></span> Show the agent over other apps</label>
+      <ol class="ag-steps" id="agSteps">
+        <li data-step="key"><span class="dot"></span><div><b>Claude API key</b><small>Save it in the Claude AI section above.</small></div></li>
+        <li data-step="restricted"><span class="dot"></span><div><b>Allow restricted settings</b><small>Android blocks step 3 for apps installed outside the Play Store. Open App info, tap <b>⋮</b> (top right) → <b>Allow restricted settings</b>, and confirm. (If you don't see ⋮, skip this.)</small></div><button class="btn btn--ghost btn--sm" data-open="openAppInfo">App info</button></li>
+        <li data-step="a11y"><span class="dot"></span><div><b>Turn on BASE Agent</b><small>Accessibility → <b>Installed apps</b> → <b>BASE Agent</b> → On. This is what lets it float and read your screen.</small></div><button class="btn btn--ghost btn--sm" data-open="openAccessibilitySettings">Accessibility</button></li>
+        <li data-step="notif"><span class="dot"></span><div><b>Notifications</b><small>For bill reminders. Then turn on reminders on the <a href="Budget.html">Budget</a> page, or just ask the agent.</small></div><button class="btn btn--ghost btn--sm" data-open="openNotificationSettings">Notifications</button></li>
+      </ol>
     </div>
   </section>
 
