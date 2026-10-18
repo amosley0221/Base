@@ -97,7 +97,7 @@
   });
 
   // ---------- RESET ----------
-  $("#reseed").addEventListener("click", () => { state = S.clone(S.SEED); persist(); refresh(); toast("Sample data restored"); });
+  $("#reseed").addEventListener("click", () => { state = S.clone(S.SAMPLE); persist(); refresh(); toast("Sample data restored"); });
   $("#wipe").addEventListener("click", () => {
     state = { profile: { name: "", major: "" }, tasks: [], habits: [], notes: [], events: [], milestones: [], teams: [] };
     persist(); refresh(); toast("Cleared");

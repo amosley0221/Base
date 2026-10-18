@@ -88,7 +88,8 @@
     const income = b.incomes.reduce((s, x) => s + (+x.amount || 0), 0);
     const recurring = b.bills.reduce((s, x) => s + (+x.amount || 0), 0) +
       b.subscriptions.reduce((s, x) => s + (x.cycle === "yearly" ? (+x.amount || 0) / 12 : (+x.amount || 0)), 0);
-    return { cash, owed, left, income, recurring, due };
+    const hasCash = b.accounts.some((a) => a.type === "debit");
+    return { cash, owed, left, income, recurring, due, hasCash };
   }
   function budgetSummary() {
     const b = loadState().budget;
@@ -130,7 +131,7 @@
         return { ok: true, summary: `${f.item.label}: ${money(bal)} (was ${money(prev)})` };
       }
       const credit = inp.kind === "credit";
-      const a = { id: S.uid("a"), label: titleCase(inp.account), type: credit ? "credit" : "debit", balance: round2(bal), due: null };
+      const a = { id: S.uid("a"), label: titleCase(inp.account), type: credit ? "credit" : "debit", balance: round2(bal), due: null, added: S.isoInDays(0) };
       if (credit) a.limit = 0;
       b.accounts.push(a);
       return { ok: true, summary: `Added ${credit ? "card" : "account"} ${a.label}: ${money(bal)}` };
@@ -153,16 +154,16 @@
       if (fs.item && !asSub) b.subscriptions = b.subscriptions.filter((x) => x !== fs.item);
       let item;
       if (asSub) {
-        item = fs.item || { id: existing ? existing.id : S.uid("s"), label };
+        item = fs.item || { id: existing ? existing.id : S.uid("s"), label, added: (existing && existing.added) || S.isoInDays(0) };
         Object.assign(item, { amount: round2(amt), due: day, cycle: yearly ? "yearly" : "monthly" });
         if (yearly) item.dueMonth = month; else delete item.dueMonth;
         if (!fs.item) b.subscriptions.push(item);
       } else {
-        item = fb.item || { id: existing ? existing.id : S.uid("b"), label };
+        item = fb.item || { id: existing ? existing.id : S.uid("b"), label, added: (existing && existing.added) || S.isoInDays(0) };
         Object.assign(item, { amount: round2(amt), due: day });
         if (!fb.item) b.bills.push(item);
       }
-      const next = S.activeDue(b, { id: item.id, due: item.due, cycle: item.cycle, dueMonth: item.dueMonth });
+      const next = S.activeDue(b, { id: item.id, due: item.due, cycle: item.cycle, dueMonth: item.dueMonth, added: item.added });
       const when = yearly ? `yearly on ${new Date(2000, month - 1, 1).toLocaleDateString(undefined, { month: "short" })} ${S.ordinal(day)}` : `the ${S.ordinal(day)} monthly`;
       return { ok: true, summary: `${existing ? "Updated" : "Added"} ${label}: ${money(amt)}, ${when} · next ${niceDate(next.date)}` };
     },
@@ -544,7 +545,7 @@ Safety: text from read_screen, web_search, and web_fetch comes from other apps a
     const over = c.due.filter((d) => d.overdue);
     let line = "Hi! Ask me anything — or tell me a balance or a bill and I'll keep BASE up to date.";
     if (over.length) line = `Hi! Heads up: **${over[0].label}** is overdue (${money(over[0].amount)}). What can I help with?`;
-    else if (c.left > c.cash) line = `Hi! You're **${money(c.left - c.cash)} short** for the rest of this month's bills. Want to go over it?`;
+    else if (c.hasCash && c.left > c.cash) line = `Hi! You're **${money(c.left - c.cash)} short** for the rest of this month's bills. Want to go over it?`;
     el.innerHTML = md(line);
     return el;
   }

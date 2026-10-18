@@ -241,8 +241,9 @@
     const now = new Date();
     const eom = new Date(now.getFullYear(), now.getMonth() + 1, 0); eom.setHours(23, 59, 59, 999);
     const left = list.filter((d) => d.date <= eom).reduce((s, d) => s + d.amount, 0);
-    const cash = (b.accounts || []).filter((a) => a.type === "debit").reduce((s, a) => s + (+a.balance || 0), 0);
-    if (left > cash) return { text: "Short " + money2(left - cash) + " for this month's bills", tone: "bad" };
+    const debit = (b.accounts || []).filter((a) => a.type === "debit");
+    const cash = debit.reduce((s, a) => s + (+a.balance || 0), 0);
+    if (debit.length && left > cash) return { text: "Short " + money2(left - cash) + " for this month's bills", tone: "bad" };
     const soon = list.filter((d) => d.daysUntil >= 0 && d.daysUntil <= 2);
     if (soon.length) return { text: soon[0].label + " " + whenText(soon[0].daysUntil) + " · " + money2(soon[0].amount), tone: "warn" };
     return { text: "", tone: "info" };
