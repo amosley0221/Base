@@ -24,6 +24,9 @@
   .ios-steps { font-size: 13.5px; color: var(--ink-soft); line-height: 1.6; margin-top: 14px; padding: 14px 16px; background: var(--paper); border-radius: 12px; max-width: 60ch; }
   .ios-steps b { color: var(--ink); }
   .hidden { display: none !important; }
+  .wx-results { display: grid; gap: 8px; margin-top: 12px; max-width: 60ch; }
+  .wx-results button { text-align: left; font: inherit; font-size: 15px; color: var(--ink); background: var(--paper); border: 1px solid var(--edge); border-radius: 12px; padding: 11px 14px; cursor: pointer; }
+  .wx-results button small { color: var(--ink-soft); margin-left: 6px; }
   .ag-steps { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; max-width: 64ch; }
   .ag-steps li { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: start; gap: 8px 12px; padding: 12px 14px; border: 1px solid var(--edge); border-radius: 14px; }
   .ag-steps li > div > b { display: block; font-size: 15px; }
@@ -87,6 +90,18 @@
       <button class="btn btn--red" id="aiSave" data-cursor>Save key</button>
       <button class="btn btn--ghost btn--sm" id="aiClear" data-cursor>Clear</button>
     </div>
+  </section>
+
+  <!-- WEATHER -->
+  <section class="card panel" id="weatherPanel">
+    <div class="panel-title"><h2>Weather location</h2><span class="set-status" id="wxStatus"><i></i> Your location</span></div>
+    <p class="note">Home shows the weather for where you are. If your phone's location is off or you'd rather pick a city, search for it here.</p>
+    <div class="btn-row" style="gap:8px;align-items:center;flex-wrap:wrap">
+      <input class="field" id="wxCity" placeholder="City or ZIP code" autocomplete="off" style="flex:1;min-width:200px" />
+      <button class="btn btn--red" id="wxSearch" data-cursor>Search</button>
+    </div>
+    <div class="wx-results" id="wxResults"></div>
+    <div class="btn-row" style="margin-top:12px"><button class="btn btn--ghost btn--sm" id="wxUseGps" data-cursor>Use my current location</button></div>
   </section>
 
   <!-- FLOATING AGENT -->

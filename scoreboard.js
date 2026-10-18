@@ -184,7 +184,7 @@
       if (g.state === "in") { tag = `<span class="g-tag live">LIVE</span>`; status = g.detail || "In progress"; }
       else if (g.state === "post") { tag = `<span class="g-tag ${g.winner ? "" : "final"}">${g.winner ? "WIN" : "LOSS"}</span>`; status = "Final"; }
       else { tag = `<span class="g-tag">${fmtDateTime(g.date)}</span>`; status = "Next up"; }
-      const score = g.state !== "pre" ? `<span class="sc">${esc(g.ourScore)}–${esc(g.oppScore)}</span>` : "";
+      const score = g.state !== "pre" && g.ourScore != null && g.oppScore != null ? `<span class="sc">${esc(g.ourScore)}–${esc(g.oppScore)}</span>` : "";
       const clickable = !!g.id;
       return `<div class="game ${clickable ? "clickable" : ""}" ${clickable ? `data-id="${esc(g.id)}" data-sport="${t.sport}" data-league="${t.league}"` : ""}>
         <div class="g-status"><span>${esc(status)}</span>${tag}</div>

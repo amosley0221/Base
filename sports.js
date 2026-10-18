@@ -77,6 +77,24 @@ window.Sports = (function () {
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
   }
 
+  function ymd(d) { return d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0"); }
+  async function fillScores(team, games) {
+    const base = `https://site.api.espn.com/apis/site/v2/sports/${team.sport}/${team.league}/scoreboard`;
+    const urls = [base].concat([...new Set(games.map((g) => base + "?dates=" + ymd(g.date)))]);
+    for (const url of urls) {
+      if (!games.some((g) => g.ourScore == null)) return;
+      try {
+        const d = await getJSON(url);
+        (d.events || []).forEach((ev) => {
+          const g = games.find((x) => String(x.id) === String(ev.id));
+          if (!g) return;
+          const fresh = parseEvent(ev, team.id);
+          if (fresh) Object.assign(g, fresh);
+        });
+      } catch (e) { /* keep what we have */ }
+    }
+  }
+
   // returns { team, chosen, todayGame } or { team, error }
   async function teamGame(team) {
     try {
@@ -88,7 +106,12 @@ window.Sports = (function () {
       const upcoming = events.filter((e) => e.state === "pre").sort((a, b) => a.date - b.date);
       const past = events.filter((e) => e.state === "post").sort((a, b) => a.date - b.date);
       const chosen = live || upcoming[0] || past[past.length - 1] || null;
-      const todayGame = events.find((e) => sameDay(e.date, now) && e.state !== "post") || null;
+      // A team's schedule feed doesn't carry live (or fresh final) scores, so
+      // fill them in from the league scoreboard, matched by game id.
+      const missing = events.filter((e) => e.state !== "pre" && (e.ourScore == null || e.oppScore == null) && (e.state === "in" || Date.now() - e.date < 3 * 86400000));
+      if (missing.length) await fillScores(team, missing);
+      const today = events.filter((e) => sameDay(e.date, now));
+      const todayGame = today.find((e) => e.state === "in") || today.find((e) => e.state === "pre") || today.find((e) => e.state === "post") || null;
       return { team, chosen, todayGame };
     } catch (e) {
       return { team, error: true };

@@ -61,10 +61,31 @@
 
     let sport = "";
     if (sportsToday.length) {
-      const s = sportsToday[0];
-      sport = s.live ? ` Your <span class="accent">${esc(s.team)}</span> are playing now.` : ` Your <span class="accent">${esc(s.team)}</span> play at ${esc(s.time)}.`;
+      // live games first, then today's upcoming, then today's finals
+      const order = { in: 0, pre: 1, post: 2 };
+      const s = sportsToday.slice().sort((a, b) => order[a.game.state] - order[b.game.state])[0];
+      sport = " " + gameLine(s.team, s.game);
     }
     $("#preview").innerHTML = lead + body + sport;
+  }
+
+  // "Your Eagles are down 14–19 vs Panthers · 3rd 5:12." / "won 24–17" / "play at 1pm"
+  function gameLine(team, g) {
+    const name = `<a class="accent" href="Scoreboard.html">${esc(team)}</a>`;
+    const vs = (g.home ? "vs " : "at ") + esc(g.opp);
+    const has = g.ourScore != null && g.oppScore != null && g.ourScore !== "" && g.oppScore !== "";
+    const us = +g.ourScore, them = +g.oppScore;
+    const score = has ? `${esc(g.ourScore)}–${esc(g.oppScore)}` : "";
+    if (g.state === "in") {
+      const how = !has ? "are playing now" : us > them ? `are up ${score}` : us < them ? `are down ${score}` : `are tied ${score}`;
+      return `Your ${name} ${how} ${vs}${g.detail ? " · " + esc(g.detail) : ""}.`;
+    }
+    if (g.state === "post") {
+      const how = !has ? "finished" : g.winner || us > them ? `won ${score}` : us < them ? `lost ${score}` : `tied ${score}`;
+      return `Your ${name} ${how} ${vs}.`;
+    }
+    const t = g.date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    return `Your ${name} play ${vs} at ${esc(t)}.`;
   }
 
   // ---------- COUNTDOWN HEADLINE ----------
@@ -228,9 +249,10 @@ ${items}
     const t = res.team;
     if (res.error || !res.chosen) return `<div class="sc-head"><div class="sc-team">${esc(t.name)}</div></div><div class="sc-line muted">Season's quiet right now.</div>`;
     const g = res.chosen, vs = g.home ? "vs" : "@";
+    const sc = g.ourScore != null && g.oppScore != null ? `${esc(g.ourScore)}–${esc(g.oppScore)} ` : "";
     let tag = "", main = "", sub = "";
-    if (g.state === "in") { tag = `<span class="sc-tag live">LIVE</span>`; main = `${g.ourScore}–${g.oppScore} <span class="sc-vs">${vs}</span> ${esc(g.oppAbbr || g.opp)}`; sub = g.detail || "In progress"; }
-    else if (g.state === "post") { tag = `<span class="sc-tag ${g.winner ? "win" : "loss"}">${g.winner ? "W" : "L"}</span>`; main = `${g.ourScore}–${g.oppScore} <span class="sc-vs">${vs}</span> ${esc(g.opp)}`; sub = "Final"; }
+    if (g.state === "in") { tag = `<span class="sc-tag live">LIVE</span>`; main = `${sc}<span class="sc-vs">${vs}</span> ${esc(g.oppAbbr || g.opp)}`; sub = g.detail || "In progress"; }
+    else if (g.state === "post") { tag = `<span class="sc-tag ${g.winner ? "win" : "loss"}">${g.winner ? "W" : "L"}</span>`; main = `${sc}<span class="sc-vs">${vs}</span> ${esc(g.opp)}`; sub = "Final"; }
     else { tag = `<span class="sc-tag">NEXT</span>`; main = `<span class="sc-vs">${vs}</span> ${esc(g.opp)}`; sub = fmtGameTime(g.date); }
     return `<div class="sc-head"><div class="sc-team">${esc(t.name)}</div>${tag}</div><div class="sc-line">${main}</div><div class="sc-sub">${sub}</div>`;
   }
@@ -276,7 +298,7 @@ ${items}
     sportsToday = [];
     const teamCards = [], usedIds = new Set();
     results.forEach((res) => {
-      if (res.todayGame) sportsToday.push({ team: res.team.name, time: res.todayGame.date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }), live: res.todayGame.state === "in" });
+      if (res.todayGame) sportsToday.push({ team: res.team.name, game: res.todayGame });
       const g = res.chosen;
       if (!g) return;
       if (g.state === "post" && !recent(g.date)) return;        // stale final → skip
@@ -553,7 +575,7 @@ ${items}
     if (c >= 95) return ["storm", "Thunderstorm"];
     return ["cloud", "—"];
   }
-  async function fetchWx(lat, lon, fallbackName) {
+  async function fetchWx(lat, lon, fallbackName, fixedName) {
     try {
       const u = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&temperature_unit=fahrenheit&timezone=auto`;
       const d = await (await fetch(u)).json();
@@ -564,13 +586,24 @@ ${items}
         $("#wxCond").textContent = label;
       }
       let name = fallbackName || "";
-      try { const gj = await (await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)).json(); name = gj.city || gj.locality || gj.principalSubdivision || name; } catch (e) {}
+      if (!fixedName) try { const gj = await (await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)).json(); name = gj.city || gj.locality || gj.principalSubdivision || name; } catch (e) {}
       if (name) $("#wxLoc").textContent = name;
     } catch (e) { $("#wxCond").textContent = "Weather unavailable"; $("#wxIcon").innerHTML = WX.cloud; }
   }
+  // Weather location: a city picked in Settings, else this device's location,
+  // else New York (labelled so it's clear it can be changed).
   function loadWeather() {
-    const fb = () => fetchWx(40.7128, -74.006, "New York");
-    if (navigator.geolocation) navigator.geolocation.getCurrentPosition((p) => fetchWx(p.coords.latitude, p.coords.longitude, ""), fb, { timeout: 6000, maximumAge: 600000 });
+    const loc = $("#wxLoc");
+    if (loc && !loc.closest("a")) {
+      const a = document.createElement("a");
+      a.href = "Settings.html#weatherPanel"; a.className = "wx-loc-link"; a.title = "Change weather location";
+      loc.parentNode.insertBefore(a, loc); a.appendChild(loc);
+    }
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem("base_wx_loc")); } catch (e) {}
+    if (saved && isFinite(saved.lat) && isFinite(saved.lon)) { fetchWx(saved.lat, saved.lon, saved.name, true); return; }
+    const fb = () => fetchWx(40.7128, -74.006, "New York · tap to change", true);
+    if (navigator.geolocation) navigator.geolocation.getCurrentPosition((p) => fetchWx(p.coords.latitude, p.coords.longitude, ""), fb, { timeout: 8000, maximumAge: 600000 });
     else fb();
   }
 
