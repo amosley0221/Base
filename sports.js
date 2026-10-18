@@ -5,6 +5,22 @@
 window.Sports = (function () {
   "use strict";
 
+  // Some ESPN endpoints (e.g. /teams) don't send CORS headers, so a web page
+  // can't read them. In the Android app, fall back to the native HTTP client,
+  // which isn't subject to CORS.
+  const CAP = window.Capacitor;
+  const NATIVE_HTTP = CAP && CAP.isNativePlatform && CAP.isNativePlatform() && CAP.Plugins ? CAP.Plugins.CapacitorHttp : null;
+  async function getJSON(url) {
+    try {
+      const r = await fetch(url);
+      return await r.json();
+    } catch (e) {
+      if (!NATIVE_HTTP) throw e;
+      const r = await NATIVE_HTTP.request({ url, method: "GET", responseType: "json" });
+      return typeof r.data === "string" ? JSON.parse(r.data) : r.data;
+    }
+  }
+
   const LEAGUES = [
     { sport: "football", league: "nfl", label: "NFL" },
     { sport: "basketball", league: "nba", label: "NBA" },
@@ -65,8 +81,7 @@ window.Sports = (function () {
   async function teamGame(team) {
     try {
       const url = `https://site.api.espn.com/apis/site/v2/sports/${team.sport}/${team.league}/teams/${team.id}/schedule`;
-      const r = await fetch(url);
-      const d = await r.json();
+      const d = await getJSON(url);
       const events = (d.events || []).map((e) => parseEvent(e, team.id)).filter(Boolean);
       const now = new Date();
       const live = events.find((e) => e.state === "in");
@@ -107,7 +122,7 @@ window.Sports = (function () {
     // leagues — e.g. soccer — behave differently with the limit param).
     for (const url of [base + "?limit=1000", base]) {
       try {
-        const d = await (await fetch(url)).json();
+        const d = await getJSON(url);
         const teams = dedupeSortTeams(parseTeamsPayload(d));
         if (teams.length) return teams;
       } catch (e) { /* try next */ }
@@ -117,9 +132,18 @@ window.Sports = (function () {
   // Fallback: pull the team roster out of the standings feed (same data path
   // that powers live scores, so it works wherever scores do).
   async function teamsFromStandings(sport, league) {
+    const base = `https://site.api.espn.com/apis/v2/sports/${sport}/${league}/standings`;
+    // level=1 groups college leagues by conference; for soccer it returns no
+    // tables at all, so also try the plain feed.
+    for (const url of [base + "?level=1", base]) {
+      const t = await standingsTeams(url);
+      if (t.length) return t;
+    }
+    return [];
+  }
+  async function standingsTeams(url) {
     try {
-      const url = `https://site.api.espn.com/apis/v2/sports/${sport}/${league}/standings?level=1`;
-      const d = await (await fetch(url)).json();
+      const d = await getJSON(url);
       const teams = [];
       (function walk(node) {
         if (!node) return;
@@ -151,7 +175,7 @@ window.Sports = (function () {
   async function leagueScoreboard(sport, league, dates) {
     try {
       const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard${dates ? "?dates=" + dates : ""}`;
-      const d = await (await fetch(url)).json();
+      const d = await getJSON(url);
       const games = (d.events || []).map((ev) => {
         const comp = ev.competitions && ev.competitions[0];
         if (!comp) return null;
@@ -195,7 +219,7 @@ window.Sports = (function () {
   async function standings(sport, league) {
     try {
       const url = `https://site.api.espn.com/apis/v2/sports/${sport}/${league}/standings`;
-      const d = await (await fetch(url)).json();
+      const d = await getJSON(url);
       const rows = [];
       function walk(node, groupName) {
         if (!node) return;
@@ -228,7 +252,7 @@ window.Sports = (function () {
   async function gameSummary(sport, league, eventId) {
     try {
       const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/summary?event=${eventId}`;
-      const d = await (await fetch(url)).json();
+      const d = await getJSON(url);
       const comp = d.header && d.header.competitions && d.header.competitions[0];
       const cs = (comp && comp.competitors) || [];
       const st = (comp && comp.status && comp.status.type) || {};
@@ -327,7 +351,7 @@ window.Sports = (function () {
   // unless the game is in progress.
   async function gameSituation(sport, league, eventId) {
     try {
-      const d = await (await fetch(`https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard`)).json();
+      const d = await getJSON(`https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard`);
       const ev = (d.events || []).find((e) => String(e.id) === String(eventId));
       const comp = ev && ev.competitions && ev.competitions[0];
       if (!comp) return null;
@@ -357,7 +381,7 @@ window.Sports = (function () {
   async function news(sport, league) {
     try {
       const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/news`;
-      const d = await (await fetch(url)).json();
+      const d = await getJSON(url);
       return (d.articles || []).map((a) => ({
         headline: a.headline || a.shortHeadline || "",
         desc: a.description || "",
