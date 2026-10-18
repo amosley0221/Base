@@ -650,7 +650,16 @@ ${items}
   }
   let ticking = false;
   function frame() { updateHero(); updateNotes(); updateNav(); updateDots(); ticking = false; }
-  function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(frame); } }
+  // Wide screens show the active section label only while scrolling (CSS keys
+  // off .awake), so it doesn't sit on top of the right-hand cards.
+  let railTimer = null;
+  function wakeRail() {
+    dotnav.classList.add("awake");
+    clearTimeout(railTimer);
+    railTimer = setTimeout(() => dotnav.classList.remove("awake"), 1300);
+  }
+  wakeRail();
+  function onScroll() { wakeRail(); if (!ticking) { ticking = true; requestAnimationFrame(frame); } }
 
   const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) e.target.classList.add("in"); }), { threshold: 0.18 });
   $$(".reveal").forEach((el) => io.observe(el));
