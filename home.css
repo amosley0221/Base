@@ -40,15 +40,11 @@ body.theme-dark .progress { background: #fff; }
   .ht-left { max-width: 100%; }
   .ht-weather { align-items: flex-start; text-align: left; }
 }
-/* Medium widths still show the section-dot rail, so keep the hero's
-   right-hand content clear of it. (On wide screens the rail is hidden.) */
-@media (min-width: 641px) and (max-width: 819px) {
+/* Anything wider than a phone shows the section-dot rail on the right, so keep
+   the hero's and sections' right-hand content clear of it. */
+@media (min-width: 641px) {
   .h-hero-top { padding-right: calc(var(--pad) + 56px); }
-}
-/* Wide / unfolded: the vertical section-dot rail reads as a "bar" down the
-   right edge and isn't needed in the scrolling tablet view — hide it. */
-@media (min-width: 820px) {
-  #dotnav { display: none !important; }
+  .sec { padding-right: calc(var(--pad) + 44px); }
 }
 /* Unfolded foldables & small tablets (≈ Z Fold inner screen, iPad mini): give the
    hero a calmer two-column rhythm and use the extra width instead of stretching. */
@@ -492,4 +488,14 @@ body.modal-open { overflow: hidden; }
   .sec-open { display: inline-flex; align-items: center; margin-top: 20px; font-size: 14px; font-weight: 600; color: var(--red); text-decoration: none; letter-spacing: 0.02em; transition: opacity 0.2s var(--ease); }
   .sec-open:hover { opacity: 0.75; }
   .notes-head .sec-open { margin-top: 12px; }
+}
+
+/* Wide screens: the active section label shows while scrolling, hovering or
+   dragging the rail, then fades so it doesn't cover the right-hand cards.
+   Phones (≤640px) keep the always-visible label. */
+@media (min-width: 641px) {
+  .dotnav-dot.active .dn-label { opacity: 0; transform: translateY(-50%) translateX(6px); pointer-events: none; }
+  .dotnav.awake .dotnav-dot.active .dn-label,
+  .dotnav .dotnav-dot:hover .dn-label,
+  .dotnav.dragging .dotnav-dot.active .dn-label { opacity: 1; transform: translateY(-50%) translateX(0); pointer-events: auto; }
 }
