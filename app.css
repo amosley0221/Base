@@ -192,9 +192,10 @@ select.field { appearance: none; cursor: pointer; }
 .chip[data-cat="personal"] { color: var(--personal); border-color: color-mix(in oklab, var(--personal) 35%, var(--edge)); }
 
 /* week day toggles (habits) */
-.weekdots { display: flex; gap: 7px; }
+.weekdots { display: flex; gap: 7px; min-width: 0; }
 .weekdots .d {
-  width: 30px; height: 30px; border-radius: 9px; border: 1px solid var(--edge);
+  /* up to 30px, but allowed to shrink so the row never forces its card wider */
+  flex: 0 1 30px; min-width: 0; aspect-ratio: 1; border-radius: 9px; border: 1px solid var(--edge);
   display: grid; place-items: center; font-size: 11px; color: var(--ink-faint);
   cursor: pointer; transition: all 0.2s var(--ease); background: var(--white); user-select: none;
 }
