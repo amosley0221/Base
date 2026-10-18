@@ -150,6 +150,8 @@ select.field { appearance: none; cursor: pointer; }
 .panel-title .hint { font-size: 13px; color: var(--ink-faint); }
 
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; align-items: start; }
+/* let panels shrink to their column instead of forcing it wider than the screen */
+.grid-2 > * { min-width: 0; }
 @media (max-width: 820px) { .grid-2 { grid-template-columns: 1fr; } }
 
 /* row list (tasks / habits / notes / events) */
