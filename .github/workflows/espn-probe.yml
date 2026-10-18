@@ -1,0 +1,40 @@
+name: ESPN probe (temporary)
+on:
+  push:
+    branches: [claude/wizardly-brown-OBmBc]
+    paths: [.github/workflows/espn-probe.yml]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe EPL endpoints
+        run: |
+          for u in \
+            "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/teams?limit=1000" \
+            "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/teams" \
+            "https://site.api.espn.com/apis/v2/sports/soccer/eng.1/standings?level=1" \
+            "https://site.api.espn.com/apis/v2/sports/soccer/eng.1/standings" \
+            "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams?limit=1000" ; do
+            echo "=================== $u"
+            curl -s -D /tmp/h -o /tmp/b -H "Origin: https://localhost" "$u"
+            head -1 /tmp/h; grep -i "access-control-allow-origin\|content-type" /tmp/h
+            echo "bytes: $(wc -c < /tmp/b)"
+            head -c 1200 /tmp/b; echo
+            python3 - <<'PY'
+          import json
+          try:
+              d=json.load(open('/tmp/b'))
+          except Exception as e:
+              print("not json", e); raise SystemExit
+          def keys(o,depth=0,path=""):
+              if depth>4: return
+              if isinstance(o,dict):
+                  for k,v in o.items():
+                      t=type(v).__name__ + (f"[{len(v)}]" if isinstance(v,list) else "")
+                      print("  "*depth+f"{path}.{k}: {t}")
+                      if isinstance(v,(dict,list)): keys(v,depth+1,path+"."+k)
+              elif isinstance(o,list) and o:
+                  keys(o[0],depth+1,path+"[0]")
+          keys(d)
+          PY
+          done
