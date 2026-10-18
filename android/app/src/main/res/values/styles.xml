@@ -15,6 +15,8 @@
         <!-- Dark window bg: shows behind the transparent (edge-to-edge) system
              bars so they match the app instead of defaulting to system grey. -->
         <item name="android:windowBackground">@color/baseBackground</item>
+        <!-- Clear any view background inherited from the launch theme. -->
+        <item name="android:background">@null</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
@@ -22,7 +24,10 @@
 
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="android:background">@drawable/splash</item>
+        <!-- Launch screen: plain BASE background with the app icon. (A theme-level
+             android:background here leaked into every popup — e.g. the team
+             picker dropdown showed the splash image instead of its list.) -->
+        <item name="windowSplashScreenBackground">@color/baseBackground</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
