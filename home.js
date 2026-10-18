@@ -33,8 +33,8 @@
 
   // ---------- HEADER + PREVIEW ----------
   function renderHeader() {
-    const name = (state.profile.name || "Antonio").trim();
-    $("#greet").textContent = S.greeting() + ", " + name + ".";
+    const name = (state.profile.name || "").trim();
+    $("#greet").textContent = S.greeting() + (name ? ", " + name : "") + ".";
     $("#date").textContent = S.formatDate();
   }
 

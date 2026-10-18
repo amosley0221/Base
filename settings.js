@@ -90,7 +90,7 @@
 
   // ---------- RESET ----------
   $("#reseedBtn").addEventListener("click", () => {
-    S.save(S.clone(S.SEED)); toast("Sample data restored"); setTimeout(() => location.reload(), 700);
+    S.save(S.clone(S.SAMPLE)); toast("Sample data restored"); setTimeout(() => location.reload(), 700);
   });
   $("#wipeBtn").addEventListener("click", () => {
     S.save({ profile: { name: "", major: "" }, tasks: [], habits: [], notes: [], events: [], milestones: [], teams: [], budget: { incomes: [], expenses: [], history: [], taxRate: 0.12, accounts: [], bills: [], subscriptions: [] }, school: { creditsNeeded: 120, targetGpa: 3.5, creditsPerSem: 15, completed: [], planned: [], assignments: [] } });

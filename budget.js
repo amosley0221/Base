@@ -111,7 +111,8 @@
     const rows = [];
     const mk = (id, label, kind, group, amount, date, yearly) => {
       const cycleKey = S.cycleKeyFor(date, yearly);
-      return { id, label, kind, group, amount, date, cycleKey, paid: S.isPaidIn(b, id, cycleKey) };
+      const item = [].concat(b.bills || [], b.subscriptions || [], b.accounts || []).find((x) => x.id === id);
+      return { id, label, kind, group, amount, date, cycleKey, paid: S.isPaidIn(b, id, cycleKey), untracked: S.beforeAdded(item, date) };
     };
     (b.bills || []).forEach((x) => { if (x.due) rows.push(mk(x.id, x.label, "Bill", "bill", +x.amount || 0, S.occDate(x.due, y, m), false)); });
     (b.subscriptions || []).forEach((x) => {
@@ -142,7 +143,7 @@
       <div class="cf-tile"><div class="v ${isCurrent && projected < 0 ? "neg" : ""}">${isCurrent ? money(projected) : "—"}</div><div class="k">Projected cash</div><div class="s">${isCurrent ? "after remaining bills" : "this month only"}</div></div>`;
     $("#cfNote").textContent = rows.length ? "Tap ✓ to mark a bill paid — it rolls forward to the next cycle automatically." : "No bills scheduled this month.";
     $("#cfSched").innerHTML = rows.map((r) => {
-      const overdue = isCurrent && !r.paid && r.date < today;
+      const overdue = isCurrent && !r.paid && !r.untracked && r.date < today;
       return dueRowHTML({ itemId: r.id, label: r.label, kind: r.kind, group: r.group, amount: r.amount, date: r.date, cycleKey: r.cycleKey, paid: r.paid, overdue: overdue, daysUntil: null }, { paidLabel: true });
     }).join("");
     wirePay($("#cfSched"), true);
@@ -281,7 +282,7 @@
     const label = $("#acLabel").value.trim(), type = $("#acType").value;
     const bal = +$("#acBal").value, limit = +$("#acLimit").value, due = +$("#acDue").value;
     if (!label) { toast("Name the card or account"); return; }
-    const a = { id: S.uid("a"), label, type, balance: bal || 0 };
+    const a = { id: S.uid("a"), label, type, balance: bal || 0, added: S.isoInDays(0) };
     if (type === "credit") { a.limit = limit || 0; a.due = (due >= 1 && due <= 31) ? due : null; }
     b.accounts.push(a);
     ["acLabel", "acBal", "acLimit", "acDue"].forEach((id) => ($("#" + id).value = ""));
@@ -290,14 +291,14 @@
   $("#addBill").addEventListener("click", () => {
     const label = $("#blLabel").value.trim(), amt = +$("#blAmt").value, due = +$("#blDue").value;
     if (!label || !(amt > 0)) { toast("Add a bill and amount"); return; }
-    b.bills.push({ id: S.uid("b"), label, amount: amt, due: (due >= 1 && due <= 31) ? due : null });
+    b.bills.push({ id: S.uid("b"), label, amount: amt, due: (due >= 1 && due <= 31) ? due : null, added: S.isoInDays(0) });
     ["blLabel", "blAmt", "blDue"].forEach((id) => ($("#" + id).value = ""));
     persist(); renderAll(); toast("Bill added");
   });
   $("#addSub").addEventListener("click", () => {
     const label = $("#sbLabel").value.trim(), amt = +$("#sbAmt").value, cycle = $("#sbCycle").value, due = +$("#sbDue").value;
     if (!label || !(amt > 0)) { toast("Add a subscription and amount"); return; }
-    const sub = { id: S.uid("s"), label, amount: amt, cycle, due: (due >= 1 && due <= 31) ? due : null };
+    const sub = { id: S.uid("s"), label, amount: amt, cycle, due: (due >= 1 && due <= 31) ? due : null, added: S.isoInDays(0) };
     if (cycle === "yearly") { const mo = +$("#sbMonth").value; sub.dueMonth = (mo >= 1 && mo <= 12) ? mo : (new Date().getMonth() + 1); }
     b.subscriptions.push(sub);
     ["sbLabel", "sbAmt", "sbMonth", "sbDue"].forEach((id) => ($("#" + id).value = ""));

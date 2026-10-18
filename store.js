@@ -72,6 +72,31 @@
   function activeDue(budget, item) {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const yearly = item.cycle === "yearly";
+    // Dates before the item was added to BASE were never tracked, so they're
+    // never "overdue": skip ahead to the first occurrence on/after that day.
+    const added = item.added ? parseISO(item.added) : null;
+    if (added && added <= today) {
+      const r = activeDueRaw(budget, item, today, yearly);
+      if (r.overdue && r.date < added) {
+        const d = yearly ? occDate(item.due, r.date.getFullYear() + 1, (item.dueMonth || 1) - 1)
+          : occDate(item.due, r.date.getFullYear(), r.date.getMonth() + 1);
+        const key = cycleKeyFor(d, yearly);
+        return { date: d, overdue: false, cycleKey: key };
+      }
+      return r;
+    }
+    return activeDueRaw(budget, item, today, yearly);
+  }
+  function parseISO(s) {
+    const p = String(s).split("-").map(Number);
+    const d = new Date(p[0], (p[1] || 1) - 1, p[2] || 1); d.setHours(0, 0, 0, 0);
+    return d;
+  }
+  // True when a dated occurrence falls before the item was added (untracked).
+  function beforeAdded(item, date) {
+    return !!(item && item.added) && date < parseISO(item.added);
+  }
+  function activeDueRaw(budget, item, today, yearly) {
     if (yearly) {
       const mo = (item.dueMonth || 1) - 1;
       let y = today.getFullYear();
@@ -99,17 +124,17 @@
     const out = [];
     (budget.bills || []).forEach((x) => {
       if (!x.due) return;
-      const a = activeDue(budget, { id: x.id, due: x.due });
+      const a = activeDue(budget, { id: x.id, due: x.due, added: x.added });
       out.push({ itemId: x.id, label: x.label, kind: "Bill", group: "bill", amount: +x.amount || 0, ...a });
     });
     (budget.subscriptions || []).forEach((x) => {
       if (!x.due) return;
-      const a = activeDue(budget, { id: x.id, due: x.due, cycle: x.cycle, dueMonth: x.dueMonth });
+      const a = activeDue(budget, { id: x.id, due: x.due, cycle: x.cycle, dueMonth: x.dueMonth, added: x.added });
       out.push({ itemId: x.id, label: x.label, kind: x.cycle === "yearly" ? "Subscription · yearly" : "Subscription", group: "sub", amount: +x.amount || 0, ...a });
     });
     (budget.accounts || []).forEach((a) => {
       if (!(a.type === "credit" && a.due)) return;
-      const d = activeDue(budget, { id: a.id, due: a.due });
+      const d = activeDue(budget, { id: a.id, due: a.due, added: a.added });
       out.push({ itemId: a.id, label: a.label + " payment", kind: "Credit card", group: "card", amount: +a.balance || 0, ...d });
     });
     out.forEach((o) => (o.daysUntil = Math.round((o.date - today) / 86400000)));
@@ -126,7 +151,9 @@
     budget.paidLog = budget.paidLog.filter((p) => !(p.itemId === itemId && p.cycleKey === cycleKey));
   }
 
-  const SEED = {
+  // Example data — only used by "Restore sample data" in Settings. A new
+  // install starts from the empty SEED below.
+  const SAMPLE = {
     profile: {
       name: "Antonio",
       major: "Computer Engineering",
@@ -266,7 +293,69 @@
     },
   };
 
+  // What a brand-new install starts with: nothing entered yet.
+  const SEED = {
+    profile: { name: "", major: "" },
+    tasks: [], habits: [], notes: [], events: [], milestones: [],
+    teams: [], followLeagues: [],
+    budget: {
+      incomes: [], expenses: [], history: [], taxRate: 0.12,
+      accounts: [], bills: [], subscriptions: [],
+      remind: { enabled: false, daysBefore: 3 },
+      paidLog: [],
+    },
+    school: { creditsNeeded: 120, targetGpa: 3.5, creditsPerSem: 15, completed: [], planned: [], assignments: [] },
+  };
+
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+  // One-time cleanup: older versions started with the example data above and
+  // saved it as if it were yours. Remove those untouched example items (matched
+  // by id + name), keeping everything you added or renamed — and your teams.
+  const CLEAN_FLAG = "base_sample_cleared_v1";
+  function stripSample(st) {
+    const same = (a, x, keys) => a && x && a.id === x.id && keys.every((k) => JSON.stringify(a[k]) === JSON.stringify(x[k]));
+    const strip = (list, sample, keys) => Array.isArray(list)
+      ? list.filter((a) => !sample.some((x) => same(a, x, keys))) : list;
+    if (st.profile) {
+      if (st.profile.name === SAMPLE.profile.name) st.profile.name = "";
+      if (st.profile.major === SAMPLE.profile.major) st.profile.major = "";
+    }
+    st.tasks = strip(st.tasks, SAMPLE.tasks, ["text"]);
+    st.habits = strip(st.habits, SAMPLE.habits, ["name"]);
+    st.notes = strip(st.notes, SAMPLE.notes, ["title"]);
+    st.events = strip(st.events, SAMPLE.events, ["title", "day", "time"]);
+    st.milestones = strip(st.milestones, SAMPLE.milestones, ["title"]);
+    const b = st.budget, sb = SAMPLE.budget;
+    if (b) {
+      ["incomes", "expenses", "accounts", "bills", "subscriptions"].forEach((k) => { b[k] = strip(b[k], sb[k], ["label"]); });
+      if (Array.isArray(b.history)) b.history = b.history.filter((h) => !sb.history.some((x) => x.month === h.month && x.income === h.income && x.spend === h.spend));
+      // Tracking starts now for anything kept: no instant backlog of "overdue".
+      ["accounts", "bills", "subscriptions"].forEach((k) => (b[k] || []).forEach((x) => { if (!x.added) x.added = isoInDays(0); }));
+      const ids = new Set([].concat(b.accounts || [], b.bills || [], b.subscriptions || []).map((x) => x.id));
+      if (Array.isArray(b.paidLog)) b.paidLog = b.paidLog.filter((p) => ids.has(p.itemId));
+    }
+    const sc = st.school, ss = SAMPLE.school;
+    if (sc) {
+      sc.completed = strip(sc.completed, ss.completed, ["name"]);
+      sc.planned = strip(sc.planned, ss.planned, ["name"]);
+      sc.assignments = strip(sc.assignments, ss.assignments, ["title"]);
+    }
+    return st;
+  }
+  function cleanSampleOnce() {
+    try {
+      if (localStorage.getItem(CLEAN_FLAG)) return;
+      const raw = localStorage.getItem(KEY);
+      if (raw) {
+        const st = stripSample(JSON.parse(raw));
+        localStorage.setItem(KEY, JSON.stringify(st));
+        localStorage.setItem("base_rev", "clean" + Date.now().toString(36));
+      }
+      localStorage.setItem(CLEAN_FLAG, "1");
+    } catch (e) {}
+  }
+  cleanSampleOnce();
 
   function load() {
     let saved = null;
@@ -370,10 +459,10 @@
   }
 
   window.Store = {
-    KEY, DAYS, DAYS_FULL, SEED, load, save, onSave, reset, clone, uid,
+    KEY, DAYS, DAYS_FULL, SEED, SAMPLE, load, save, onSave, reset, clone, uid,
     todayIdx, isWeekend, formatDate, greeting, isoInDays, daysUntil, isoMonth, monthLabel,
     GRADES, gradePoints, gpaLetter, daysUntilDom, ordinal,
-    occDate, cycleKeyFor, isPaidIn, activeDue, dueList, markPaid, unmarkPaid,
+    occDate, cycleKeyFor, isPaidIn, activeDue, dueList, markPaid, unmarkPaid, beforeAdded,
     exportData, importData, storageBytes, EXPORT_VERSION,
   };
 })();
