@@ -39,6 +39,12 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* Never allow horizontal scrolling / right-edge gap. overflow-x:hidden on the
+   root scroller (html) is universally supported (unlike `clip`, which some
+   Android WebViews ignore) and doesn't create a nested scroll container the
+   way clipping body would. */
+html { overflow-x: hidden; overscroll-behavior-x: none; }
+
 body {
   font-family: var(--font);
   background: var(--white);
