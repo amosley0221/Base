@@ -24,6 +24,31 @@
 
         </activity>
 
+        <!-- Agent chat sheet: transparent, opens over whatever app you're in. -->
+        <activity
+            android:name=".AgentActivity"
+            android:theme="@style/AppTheme.Agent"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:launchMode="singleTask"
+            android:taskAffinity="com.amosley.base.agent"
+            android:excludeFromRecents="true"
+            android:windowSoftInputMode="adjustResize"
+            android:exported="false" />
+
+        <!-- Floating agent + on-demand screen reading. -->
+        <service
+            android:name=".BaseAgentService"
+            android:label="@string/agent_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/base_agent_service" />
+        </service>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -38,4 +63,12 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Lets the agent name the app it's reading (e.g. "Chrome"). -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
 </manifest>
