@@ -116,6 +116,51 @@
     $("#aiClear").addEventListener("click", () => { AI.setKey(""); aiKey.value = ""; refreshAi(); toast("Key cleared"); });
   }
 
+  // ---------- WEATHER LOCATION ----------
+  const WX_KEY = "base_wx_loc";
+  function wxSaved() { try { return JSON.parse(localStorage.getItem(WX_KEY)); } catch (e) { return null; } }
+  function refreshWx() {
+    const s = wxSaved(), st = $("#wxStatus");
+    st.innerHTML = "<i></i> " + (s && s.name ? s.name.replace(/</g, "&lt;") : "Your location");
+    st.classList.toggle("ok", !!s);
+  }
+  async function wxSearch() {
+    const q = $("#wxCity").value.trim(), out = $("#wxResults");
+    if (!q) return;
+    out.innerHTML = '<span class="muted">Searching…</span>';
+    try {
+      const d = await (await fetch("https://geocoding-api.open-meteo.com/v1/search?count=6&language=en&format=json&name=" + encodeURIComponent(q))).json();
+      const list = (d && d.results) || [];
+      if (!list.length) { out.innerHTML = '<span class="muted">No places found. Try a city name.</span>'; return; }
+      out.innerHTML = "";
+      list.forEach((r) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        const where = [r.admin1, r.country_code === "US" ? "" : r.country].filter(Boolean).join(", ");
+        b.innerHTML = `<b></b><small></small>`;
+        b.querySelector("b").textContent = r.name;
+        b.querySelector("small").textContent = where;
+        b.addEventListener("click", () => {
+          try { localStorage.setItem(WX_KEY, JSON.stringify({ name: r.name, lat: r.latitude, lon: r.longitude })); } catch (e) {}
+          out.innerHTML = ""; $("#wxCity").value = "";
+          refreshWx(); toast("Weather set to " + r.name);
+        });
+        out.appendChild(b);
+      });
+    } catch (e) { out.innerHTML = '<span class="muted">Couldn\'t search right now. Check your connection.</span>'; }
+  }
+  $("#wxSearch").addEventListener("click", wxSearch);
+  $("#wxCity").addEventListener("keydown", (e) => { if (e.key === "Enter") wxSearch(); });
+  $("#wxUseGps").addEventListener("click", () => {
+    try { localStorage.removeItem(WX_KEY); } catch (e) {}
+    refreshWx();
+    if (navigator.geolocation) navigator.geolocation.getCurrentPosition(
+      () => toast("Using your current location"),
+      () => toast("Location is off for BASE. Allow it in Android settings, or pick a city."),
+      { timeout: 10000 });
+  });
+  refreshWx();
+
   // ---------- FLOATING AGENT (Android app) ----------
   const CAP = window.Capacitor;
   const AGT = CAP && CAP.isNativePlatform && CAP.isNativePlatform() && CAP.Plugins ? CAP.Plugins.BaseAgent : null;
