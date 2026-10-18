@@ -2,10 +2,11 @@
   "name": "base-homebase",
   "version": "1.1.0",
   "private": true,
-  "description": "BASE — personal homebase, bundled as a Capacitor Android app",
+  "description": "BASE \u2014 personal homebase, bundled as a Capacitor Android app",
   "scripts": {
     "copy:web": "node scripts/copy-web.mjs",
-    "sync": "npm run copy:web && cap sync android"
+    "sync": "npm run copy:web && cap sync android",
+    "build:vendor": "esbuild scripts/vendor-entry.mjs --bundle --minify --format=iife --global-name=AnthropicSDK --platform=browser --target=es2020 --outfile=vendor/anthropic.js --legal-comments=eof"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",

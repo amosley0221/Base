@@ -292,10 +292,37 @@
     return merged;
   }
 
+  // ---- revision stamp ----
+  // The Android app runs two WebViews on the same data (the main app and the
+  // floating agent). Each save bumps base_rev; a page that comes back to the
+  // foreground and sees someone else's revision reloads instead of later
+  // saving its stale copy over the newer data.
+  const REV_KEY = "base_rev";
+  function readRev() { try { return localStorage.getItem(REV_KEY) || ""; } catch (e) { return ""; } }
+  let seenRev = readRev();
+  const saveHooks = [];
+  function onSave(fn) { saveHooks.push(fn); }
+
   function save(state) {
-    try { if (state) localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+    try {
+      if (!state) return false;
+      localStorage.setItem(KEY, JSON.stringify(state));
+      bumpRev();
+    } catch (e) { return false; }
+    saveHooks.forEach((fn) => { try { fn(state); } catch (e) {} });
+    return true;
   }
-  function reset() { try { localStorage.removeItem(KEY); } catch (e) {} }
+  function bumpRev() {
+    seenRev = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    try { localStorage.setItem(REV_KEY, seenRev); } catch (e) {}
+  }
+  function staleCheck() {
+    if (window.BASE_NO_AUTORELOAD || document.visibilityState === "hidden") return;
+    if (readRev() !== seenRev) location.reload();
+  }
+  document.addEventListener("visibilitychange", staleCheck);
+  window.addEventListener("focus", staleCheck);
+  function reset() { try { localStorage.removeItem(KEY); } catch (e) {} bumpRev(); }
   function uid(prefix) { return (prefix || "x") + Math.random().toString(36).slice(2, 9); }
 
   // ---- backup / restore ----
@@ -312,8 +339,7 @@
     if (!data || typeof data !== "object" || (!data.tasks && !data.budget && !data.school && !data.profile)) {
       return { ok: false, error: "This doesn't look like a BASE backup." };
     }
-    try { localStorage.setItem(KEY, JSON.stringify(data)); return { ok: true }; }
-    catch (e) { return { ok: false, error: "Couldn't save — storage may be full." }; }
+    return save(data) ? { ok: true } : { ok: false, error: "Couldn't save — storage may be full." };
   }
   function storageBytes() {
     try { const s = localStorage.getItem(KEY); return s ? new Blob([s]).size : 0; } catch (e) { return 0; }
@@ -344,7 +370,7 @@
   }
 
   window.Store = {
-    KEY, DAYS, DAYS_FULL, SEED, load, save, reset, clone, uid,
+    KEY, DAYS, DAYS_FULL, SEED, load, save, onSave, reset, clone, uid,
     todayIdx, isWeekend, formatDate, greeting, isoInDays, daysUntil, isoMonth, monthLabel,
     GRADES, gradePoints, gpaLetter, daysUntilDom, ordinal,
     occDate, cycleKeyFor, isPaidIn, activeDue, dueList, markPaid, unmarkPaid,

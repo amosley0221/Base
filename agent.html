@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+<title>BASE Agent</title>
+<script>try{if(localStorage.getItem('base_theme')==='dark')document.documentElement.classList.add('mode-dark');}catch(e){}window.BASE_NO_AUTORELOAD=true;</script>
+<link rel="stylesheet" href="app.css" />
+<link rel="stylesheet" href="agent.css" />
+</head>
+<body class="agent-body">
+<div class="ag-scrim" id="agScrim"></div>
+<section class="ag-sheet" id="agSheet" role="dialog" aria-label="BASE agent">
+  <header class="ag-head">
+    <div class="ag-blob" aria-hidden="true"><i></i><i></i><b></b></div>
+    <div class="ag-title">
+      <strong>BASE</strong>
+      <button class="ag-ctx hidden" id="agCtx" type="button" title="Tap to stop sharing your screen with BASE"></button>
+    </div>
+    <button class="ag-icon" id="agNew" type="button" title="New chat" aria-label="New chat">&#8635;</button>
+    <button class="ag-icon" id="agOpen" type="button" title="Open BASE" aria-label="Open BASE">&#8599;</button>
+    <button class="ag-icon" id="agClose" type="button" title="Close" aria-label="Close">&#10005;</button>
+  </header>
+  <div class="ag-log" id="agLog" aria-live="polite"></div>
+  <div class="ag-chips" id="agChips"></div>
+  <form class="ag-input" id="agForm" autocomplete="off">
+    <textarea id="agText" rows="1" placeholder="Ask anything…" enterkeyhint="send"></textarea>
+    <button class="ag-send" id="agSend" type="submit" aria-label="Send">&#8593;</button>
+  </form>
+</section>
+<script src="store.js"></script>
+<script src="reminders.js"></script>
+<script src="vendor/anthropic.js"></script>
+<script src="agent.js"></script>
+</body>
+</html>

@@ -83,7 +83,7 @@ public class BaseAgentPlugin extends Plugin {
 
     @PluginMethod
     public void setTheme(PluginCall call) {
-        prefs().edit().putBoolean("dark", Boolean.TRUE.equals(call.getBoolean("dark", true))).apply();
+        prefs().edit().putBoolean("dark", Boolean.TRUE.equals(call.getBoolean("dark", false))).apply();
         BaseAgentService.refreshFromPrefs();
         call.resolve();
     }

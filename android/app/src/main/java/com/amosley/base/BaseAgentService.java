@@ -365,7 +365,7 @@ public class BaseAgentService extends AccessibilityService {
     private void applyState() {
         if (root == null) return;
         SharedPreferences p = prefs(this);
-        boolean dark = p.getBoolean("dark", true);
+        boolean dark = p.getBoolean("dark", false);
         int accent = dark ? 0xFF6E9A3A : 0xFFE8281E;
         mascot.setColor(accent);
 
