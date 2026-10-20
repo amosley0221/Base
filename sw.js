@@ -4,7 +4,7 @@
    cache-busted URLs still resolve offline. localStorage (your
    data) is separate and untouched by cache updates.
    =========================================================== */
-const CACHE = "base-cache-v23";
+const CACHE = "base-cache-v24";
 const REMINDERS_CACHE = "base-reminders"; // SW-readable schedule mirror (kept across updates)
 const CORE = [
   "Home.html", "Plan.html", "Notes.html", "Calendar.html", "Budget.html",
@@ -12,7 +12,7 @@ const CORE = [
   "app.css", "home.css", "school.css", "scoreboard.css", "report.css",
   "store.js", "home.js", "plan.js", "notes.js", "calendar.js", "budget.js",
   "school.js", "scoreboard.js", "sports.js", "ui.js", "theme.js", "cursor.js",
-  "pwa.js", "settings.js", "report.js", "ai.js", "reminders.js",
+  "pwa.js", "settings.js", "report.js", "ai.js", "reminders.js", "onboard.js",
   "manifest.webmanifest", "icons/base-192.png", "icons/base-512.png", "icons/base-180.png",
 ];
 
