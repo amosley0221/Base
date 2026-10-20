@@ -24,6 +24,14 @@
   .ios-steps { font-size: 13.5px; color: var(--ink-soft); line-height: 1.6; margin-top: 14px; padding: 14px 16px; background: var(--paper); border-radius: 12px; max-width: 60ch; }
   .ios-steps b { color: var(--ink); }
   .hidden { display: none !important; }
+  .sync-steps { margin: 0 0 14px 18px; font-size: 14px; color: var(--ink-soft); line-height: 1.55; max-width: 60ch; }
+  .sync-steps li { margin-bottom: 6px; }
+  .sync-steps a { color: var(--red); }
+  #syncPanel .field { width: 100%; max-width: 420px; margin-bottom: 10px; display: block; }
+  .sync-choice { margin-top: 16px; padding: 14px 16px; background: var(--paper); border-radius: 14px; max-width: 60ch; }
+  .sync-choice .note { margin-bottom: 12px; }
+  .set-status.err { color: var(--red); border-color: var(--red); }
+  .set-status.err i { background: var(--red); }
   .wx-results { display: grid; gap: 8px; margin-top: 12px; max-width: 60ch; }
   .wx-results button { text-align: left; font: inherit; font-size: 15px; color: var(--ink); background: var(--paper); border: 1px solid var(--edge); border-radius: 12px; padding: 11px 14px; cursor: pointer; }
   .wx-results button small { color: var(--ink-soft); margin-left: 6px; }
@@ -89,6 +97,35 @@
       <input class="field" id="aiKey" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false" style="flex:1;min-width:220px" />
       <button class="btn btn--red" id="aiSave" data-cursor>Save key</button>
       <button class="btn btn--ghost btn--sm" id="aiClear" data-cursor>Clear</button>
+    </div>
+  </section>
+
+  <!-- SYNC -->
+  <section class="card panel" id="syncPanel">
+    <div class="panel-title"><h2>Sync between devices</h2><span class="set-status" id="syncStatus"><i></i> Off</span></div>
+    <p class="note">Keep BASE the same on your Android app and your iPhone. Your data is <b>encrypted on this phone with your passphrase</b> and stored in a private gist in your GitHub account, so GitHub can't read it. Use the same token and passphrase on each device.</p>
+    <div id="syncOff">
+      <ol class="sync-steps">
+        <li><a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=BASE%20sync" target="_blank" rel="noopener">Create a GitHub token</a> with only the <b>gist</b> permission. Set the expiration to <b>No expiration</b>, or remember to renew it. Copy it.</li>
+        <li>Paste it below and choose a sync passphrase. You'll need the same passphrase on your other device, and it can't be recovered.</li>
+      </ol>
+      <input class="field" id="syncToken" type="password" placeholder="GitHub token (ghp_…)" autocomplete="off" spellcheck="false" />
+      <input class="field" id="syncPass" type="password" placeholder="Sync passphrase (8+ characters)" autocomplete="new-password" />
+      <div class="btn-row"><button class="btn btn--red" id="syncConnect" data-cursor>Turn on sync</button></div>
+      <div class="sync-choice hidden" id="syncChoice">
+        <p class="note" id="syncChoiceText"></p>
+        <div class="btn-row">
+          <button class="btn btn--red btn--sm" id="syncReplace" data-cursor>Use the synced copy here</button>
+          <button class="btn btn--ghost btn--sm" id="syncCombine" data-cursor>Combine with this phone's data</button>
+        </div>
+      </div>
+    </div>
+    <div id="syncOn" class="hidden">
+      <p class="note" id="syncInfo"></p>
+      <div class="btn-row">
+        <button class="btn btn--red btn--sm" id="syncNowBtn" data-cursor>Sync now</button>
+        <button class="btn btn--ghost btn--sm" id="syncOffBtn" data-cursor>Turn off on this device</button>
+      </div>
     </div>
   </section>
 
@@ -169,6 +206,7 @@
 </main>
 
 <script src="store.js"></script>
+<script src="sync.js"></script>
 <script src="reminders.js"></script>
 <script src="ui.js"></script>
 <script src="ai.js"></script>
