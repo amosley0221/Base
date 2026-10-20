@@ -307,7 +307,7 @@
     school: { creditsNeeded: 120, targetGpa: 3.5, creditsPerSem: 15, completed: [], planned: [], assignments: [] },
   };
 
-  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function clone(o) { return o === undefined ? undefined : JSON.parse(JSON.stringify(o)); }
 
   // One-time cleanup: older versions started with the example data above and
   // saved it as if it were yours. Remove those untouched example items (matched
@@ -360,24 +360,26 @@
   function load() {
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem(KEY)); } catch (e) { saved = null; }
-    if (!saved) return clone(SEED);
-    const base = clone(SEED);
-    const merged = Object.assign(base, saved);
-    // keep profile defaults if an older save lacks fields
-    merged.profile = Object.assign({}, base.profile, saved.profile || {});
-    // deep-ish merge budget so seeded history survives older saves
-    merged.budget = Object.assign({}, base.budget, saved.budget || {});
-    if (!merged.budget.history || !merged.budget.history.length) merged.budget.history = clone(base.budget.history);
-    if (merged.budget.taxRate == null) merged.budget.taxRate = base.budget.taxRate;
-    if (!merged.budget.accounts) merged.budget.accounts = clone(base.budget.accounts);
-    if (!merged.budget.bills) merged.budget.bills = clone(base.budget.bills);
-    if (!merged.budget.subscriptions) merged.budget.subscriptions = clone(base.budget.subscriptions);
-    if (!merged.budget.remind) merged.budget.remind = clone(base.budget.remind);
-    if (!Array.isArray(merged.budget.paidLog)) merged.budget.paidLog = [];
-    // school
-    merged.school = Object.assign({}, base.school, saved.school || {});
-    if (!merged.school.assignments) merged.school.assignments = clone(base.school.assignments);
-    if (!merged.followLeagues) merged.followLeagues = clone(base.followLeagues);
+    if (!saved || typeof saved !== "object") return clone(SEED);
+    // Fill anything an older save is missing from the defaults. `def` is its own
+    // copy: Object.assign mutates its target, so defaults are never read back
+    // from the merged object (that's what crashed older iPhone saves).
+    const def = clone(SEED);
+    const merged = Object.assign(clone(SEED), saved);
+    merged.profile = Object.assign({}, def.profile, saved.profile || {});
+    merged.budget = Object.assign({}, def.budget, saved.budget || {});
+    ["history", "accounts", "bills", "subscriptions", "incomes", "expenses", "paidLog"].forEach((k) => {
+      if (!Array.isArray(merged.budget[k])) merged.budget[k] = clone(def.budget[k]);
+    });
+    if (merged.budget.taxRate == null) merged.budget.taxRate = def.budget.taxRate;
+    if (!merged.budget.remind || typeof merged.budget.remind !== "object") merged.budget.remind = clone(def.budget.remind);
+    merged.school = Object.assign({}, def.school, saved.school || {});
+    ["completed", "planned", "assignments"].forEach((k) => {
+      if (!Array.isArray(merged.school[k])) merged.school[k] = clone(def.school[k]);
+    });
+    ["tasks", "habits", "notes", "events", "milestones", "teams", "followLeagues"].forEach((k) => {
+      if (!Array.isArray(merged[k])) merged[k] = clone(def[k]);
+    });
     return merged;
   }
 
