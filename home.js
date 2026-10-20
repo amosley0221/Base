@@ -590,19 +590,13 @@ ${items}
       if (name) $("#wxLoc").textContent = name;
     } catch (e) { $("#wxCond").textContent = "Weather unavailable"; $("#wxIcon").innerHTML = WX.cloud; }
   }
-  // Weather location: a city picked in Settings, else this device's location,
-  // else New York (labelled so it's clear it can be changed).
+  // Weather location (set in Settings): a picked city, else this device's
+  // location, else New York.
   function loadWeather() {
-    const loc = $("#wxLoc");
-    if (loc && !loc.closest("a")) {
-      const a = document.createElement("a");
-      a.href = "Settings.html#weatherPanel"; a.className = "wx-loc-link"; a.title = "Change weather location";
-      loc.parentNode.insertBefore(a, loc); a.appendChild(loc);
-    }
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem("base_wx_loc")); } catch (e) {}
     if (saved && isFinite(saved.lat) && isFinite(saved.lon)) { fetchWx(saved.lat, saved.lon, saved.name, true); return; }
-    const fb = () => fetchWx(40.7128, -74.006, "New York · tap to change", true);
+    const fb = () => fetchWx(40.7128, -74.006, "New York", true);
     if (navigator.geolocation) navigator.geolocation.getCurrentPosition((p) => fetchWx(p.coords.latitude, p.coords.longitude, ""), fb, { timeout: 8000, maximumAge: 600000 });
     else fb();
   }

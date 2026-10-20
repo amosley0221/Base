@@ -27,6 +27,8 @@ body.theme-dark .progress { background: #fff; }
 .ht-left .intention { margin-top: 20px; font-size: clamp(1rem, 1.5vw, 1.2rem); color: var(--ink-soft); max-width: 34ch; line-height: 1.45; }
 .ht-left .preview { margin-top: 20px; font-size: clamp(1.02rem, 1.55vw, 1.28rem); color: var(--ink); max-width: 42ch; line-height: 1.5; }
 .ht-left .preview .accent { color: var(--red); }
+/* team name in the preview opens the Scoreboard, but reads as plain accent text */
+.ht-left .preview a.accent { text-decoration: none; -webkit-tap-highlight-color: transparent; }
 
 /* weather widget (monochrome) */
 .ht-weather { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; color: var(--ink); flex: 0 0 auto; }
