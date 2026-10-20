@@ -116,6 +116,75 @@
     $("#aiClear").addEventListener("click", () => { AI.setKey(""); aiKey.value = ""; refreshAi(); toast("Key cleared"); });
   }
 
+  // ---------- SYNC BETWEEN DEVICES ----------
+  const SY = window.BaseSync;
+  function ago(t) {
+    if (!t) return "not yet";
+    const s = Math.round((Date.now() - t) / 1000);
+    if (s < 60) return "just now";
+    if (s < 3600) return Math.round(s / 60) + " min ago";
+    if (s < 86400) return Math.round(s / 3600) + " h ago";
+    return new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+  function refreshSync() {
+    if (!SY) return;
+    const st = SY.status(), chip = $("#syncStatus");
+    $("#syncOff").classList.toggle("hidden", st.enabled);
+    $("#syncOn").classList.toggle("hidden", !st.enabled);
+    chip.classList.remove("ok", "err");
+    if (!st.enabled) { chip.innerHTML = "<i></i> Off"; return; }
+    if (st.lastError) { chip.innerHTML = "<i></i> Problem"; chip.classList.add("err"); }
+    else { chip.innerHTML = "<i></i> On"; chip.classList.add("ok"); }
+    $("#syncInfo").textContent = (st.lastError ? st.lastError + " " : "") + "Last synced " + ago(st.lastSync) +
+      ". BASE syncs when you open it and a few seconds after each change.";
+  }
+  let pendingId = null;
+  async function syncStart(mode) {
+    const btns = ["#syncConnect", "#syncReplace", "#syncCombine"].map((q) => $(q));
+    btns.forEach((b) => (b.disabled = true));
+    try {
+      await SY.start($("#syncToken").value, $("#syncPass").value, mode, pendingId);
+      $("#syncToken").value = ""; $("#syncPass").value = ""; $("#syncChoice").classList.add("hidden");
+      toast(mode === "new" ? "Sync is on. Now set it up on your other device." : "Synced");
+      refreshSync();
+      if (mode !== "new") setTimeout(() => location.reload(), 600);
+    } catch (e) { toast(e.message || "Couldn't turn on sync"); }
+    btns.forEach((b) => (b.disabled = false));
+  }
+  if (SY) {
+    $("#syncConnect").addEventListener("click", async () => {
+      const b = $("#syncConnect");
+      b.disabled = true; b.textContent = "Checking…";
+      try {
+        const r = await SY.connect($("#syncToken").value, $("#syncPass").value);
+        if (!r.exists) await syncStart("new");
+        else {
+          pendingId = r.id;
+          const when = r.at ? new Date(r.at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "earlier";
+          $("#syncChoiceText").textContent = `Found synced data from your ${r.by} (${when}): ${r.counts.bills} bills, ${r.counts.tasks} tasks, ${r.counts.notes} notes. ` +
+            `"Use the synced copy" replaces what's on this phone. "Combine" keeps both.`;
+          $("#syncChoice").classList.remove("hidden");
+        }
+      } catch (e) { toast(e.message || "Couldn't connect"); }
+      b.disabled = false; b.textContent = "Turn on sync";
+    });
+    $("#syncReplace").addEventListener("click", () => syncStart("replace"));
+    $("#syncCombine").addEventListener("click", () => syncStart("combine"));
+    $("#syncNowBtn").addEventListener("click", async () => {
+      $("#syncNowBtn").disabled = true;
+      const r = await SY.syncNow();
+      $("#syncNowBtn").disabled = false;
+      toast(r && r.error ? r.error : "Synced");
+      refreshSync();
+    });
+    $("#syncOffBtn").addEventListener("click", () => {
+      if (!confirm("Stop syncing on this device? Your data stays here and in the synced copy.")) return;
+      SY.stop(); refreshSync(); toast("Sync off on this device");
+    });
+    window.addEventListener("base-sync", refreshSync);
+    refreshSync();
+  } else { $("#syncPanel").classList.add("hidden"); }
+
   // ---------- WEATHER LOCATION ----------
   const WX_KEY = "base_wx_loc";
   function wxSaved() { try { return JSON.parse(localStorage.getItem(WX_KEY)); } catch (e) { return null; } }
