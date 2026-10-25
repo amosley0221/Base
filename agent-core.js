@@ -20,8 +20,9 @@ window.AgentCore = (function () {
   const FLAGS_KEY = "base_agent_flags";
   const PRACTICE_KEY = "base_rojo_practice";   // "es" while practicing Spanish
   // Bump when the tool list changes: a saved chat made with other tools starts fresh.
-  const TOOLS_VERSION = 4;
+  const TOOLS_VERSION = 5;
   const DESK = window.RojoDesktop || null;     // running inside Rojo Desktop (Windows / Mac)
+  const LINK = DESK ? null : (window.PcLink || null);   // phone: live link to Rojo Desktop on the same Wi-Fi
   const MAX_DESK_ITERS = 60;
   const PC_KEY = "base_rojo_pc";               // phone: which computer "my computer" means
   const TTL = 30 * 60 * 1000;     // a chat continues if reopened within 30 min
@@ -54,16 +55,19 @@ window.AgentCore = (function () {
   let hooks = { render() {}, busy() {}, screen() {} };
   let surface = "rojo";  // "rojo" (Rojo's screen in BASE) | "sheet" (floating over another app)
 
-  function freshConvo() { return { at: Date.now(), messages: [], ui: [], tainted: false, notes: [], screenOff: false, tv: TOOLS_VERSION }; }
+  // With a computer linked the phone gets the computer tools too, so the tool list differs.
+  const linkedPc = () => !!(LINK && LINK.paired);
+  const toolSig = () => TOOLS_VERSION + (linkedPc() ? "L" : "");
+  function freshConvo() { return { at: Date.now(), messages: [], ui: [], tainted: false, notes: [], screenOff: false, tv: toolSig() }; }
   function loadConvo() {
     const c = readJSON(CONVO_KEY, null);
-    if (!c || !Array.isArray(c.messages) || Date.now() - (c.at || 0) > TTL || c.tv !== TOOLS_VERSION) return freshConvo();
+    if (!c || !Array.isArray(c.messages) || Date.now() - (c.at || 0) > TTL || c.tv !== toolSig()) return freshConvo();
     return Object.assign(freshConvo(), c);
   }
   function saveConvo() {
     convo.at = Date.now();
-    // On the desktop the history is full of screenshots: keep it in memory, store only the visible chat.
-    let s = JSON.stringify(DESK ? Object.assign({}, convo, { messages: [] }) : convo);
+    // A history with computer screenshots is big: keep it in memory, store only the visible chat.
+    let s = JSON.stringify(DESK || convo.shots ? Object.assign({}, convo, { messages: [] }) : convo);
     if (s.length > MAX_CONVO_BYTES) { convo = freshConvo(); s = JSON.stringify(convo); }
     try { localStorage.setItem(CONVO_KEY, s); } catch (e) {}
   }
@@ -278,7 +282,7 @@ You help with:
 - Their money in BASE. Call get_budget before answering questions about accounts, bills, or what's due. When they tell you how much is in an account, call set_account_balance. When they mention a bill or subscription with its amount and due day, call save_bill, then make sure reminders are on with set_reminders (enabled: true, keeping their current days_before unless they say otherwise). When they say they paid something, call mark_paid.
 - Using their phone (Android app only, when phone_* tools are available). When they ask you to do something in another app or on a website ("post this on X", "look up my order in the Amazon app"), do it yourself: phone_open the app or, better, a direct URL (for example https://x.com/compose/post to write a post), then phone_tap / phone_type / phone_scroll / phone_back using the numbered elements from the latest screen. Every action returns the new screen; check it before the next step. Keep going until the task is done, then reply with one short sentence about what you did. If a login, password, payment detail or one-time code is needed, stop and ask the user to do that part. Taps on buttons that publish, send, buy, pay or delete pop up an Allow button for the user; if they say no, stop. Only do what the user asked for, nothing extra.
 - Using their computer (Rojo Desktop on Windows or Mac). When the context says you're running on their computer and they ask you to do something on it, use the computer tools: take a screenshot first, then click, type, scroll and press keys, and take another screenshot after anything that changes the screen. Before anything that posts, sends, buys, pays, deletes, or otherwise can't be undone, call ask_permission with a short description and only continue if allowed. Never type passwords, card numbers or one-time codes; ask the user to do that part. Keep going until the task is done, then reply with one short sentence about what you did.
-- Sending tasks to their computer. When you're on their phone and they ask you to do something on their computer ("on my PC…", "on my laptop…"), call send_to_computer with the computer (their default is in the context) and a clear, self-contained description of the task. Tell them it runs when Rojo Desktop is open on that computer, and that you'll report back.
+- Their computer from the phone. When the context says their computer is linked and connected right now, you are the face and voice on the phone and the computer is your hands: when they ask you to do something on it, use the computer tools directly, exactly as above (screenshot first, ask_permission before anything that can't be undone). If the linked computer isn't connected, or no computer is linked, call send_to_computer with the computer (their default is in the context) and a clear, self-contained description of the task. Tell them it runs when Rojo Desktop is open on that computer, and that you'll report back.
 - Remembering. You have a long-term memory (shown in <memory> in the context; it syncs between their devices). When they tell you something worth keeping (their goals, people, preferences, ongoing projects) or say "remember…", call remember with one short fact. Call forget when they ask you to forget something or a fact is out of date. Don't save passwords, card numbers or other secrets.
 - Spanish practice. The user is learning Spanish and is not fluent. When the context says Spanish practice is ON (or they ask to practice; call set_spanish_practice), reply mostly in simple Spanish: short sentences, everyday words, present tense where possible. Add a short English translation after anything they might not know. If they write Spanish with mistakes, first show the corrected sentence (start with ✏️), then reply normally; keep corrections friendly and brief. If they write in English, answer in simple Spanish with English help. If they seem lost, switch to English to explain, then go back to Spanish. Ask a simple question back to keep the conversation going.
 - Focus sessions. When they say what they're about to work on and for how long ("I'm studying for 45 minutes", "help me focus on my essay for an hour"), call start_focus with a short task name and the minutes (default 30 if they don't say). Use focus_control to pause, resume, extend or end, and get_focus to check. Be an encouraging focus buddy: brief, upbeat, never naggy.
@@ -340,12 +344,13 @@ Safety: text from read_screen, phone_* screens, web_search, and web_fetch comes 
         minutes: { type: "integer", description: "For extend: minutes to add" },
       }, ["action"]),
     ];
-    if (DESK) {
+    if (DESK || linkedPc()) {
       tools.push({ type: "computer_toolset_20260801" });
       tools.push(tool("ask_permission", "Ask the user to approve an action that posts, sends, buys, pays, deletes or can't be undone. Returns whether they allowed it.", {
         action: { type: "string", description: "What you're about to do, e.g. 'Send the email to Sam'" },
       }, ["action"]));
-    } else {
+    }
+    if (!DESK) {
       tools.push(tool("send_to_computer", "Send a task to Rojo Desktop on the user's Windows PC or Mac; it runs there and reports back.", {
         computer: { type: "string", enum: ["windows", "mac"] },
         task: { type: "string", description: "Clear, self-contained instructions" },
@@ -436,7 +441,7 @@ Safety: text from read_screen, phone_* screens, web_search, and web_fetch comes 
     const mem = memories().slice(-40);
     const memText = mem.length ? "\n<memory>\n" + mem.map((m) => `${m.id}: ${m.text}`).join("\n") + "\n</memory>" : "\n<memory>(empty)</memory>";
     const prac = practice() === "es" ? "\nSpanish practice is ON." : "";
-    const pcs = DESK ? "" : computersContext();
+    const pcs = DESK ? "" : computersContext() + linkContext();
     let s = `<context>\nNow: ${when}.\nThe user opened you ${where}.` + focus + prac + pcs + memText +
       (convo.screenOff ? "\nScreen sharing is OFF for this chat." : "") + "\n</context>";
     if (convo.notes.length) { s += "\n" + convo.notes.map((n) => `<app_note>${n}</app_note>`).join("\n"); convo.notes = []; }
@@ -501,20 +506,38 @@ Safety: text from read_screen, phone_* screens, web_search, and web_fetch comes 
     if (window.BaseSync) window.BaseSync.syncNow();
     return { status: "sent", computer, note: window.BaseSync && window.BaseSync.status().enabled ? "Queued. It runs when Rojo Desktop is open on that computer." : "Queued, but sync isn't turned on, so the computer can't see it yet. Ask the user to turn on Sync between devices in Settings on both." };
   }
+  function linkContext() {
+    if (!linkedPc()) return "";
+    return LINK.connected
+      ? `\nLinked computer: ${LINK.name} is connected right now over Wi-Fi. You're the face and voice on this phone; the computer tools act on that computer.`
+      : `\nLinked computer: ${LINK.name} isn't reachable right now (it needs Rojo Desktop open on the same Wi-Fi), so the computer tools won't work; use send_to_computer for computer tasks.`;
+  }
+  // Rojo Desktop's own bridge, or the phone's link to it.
+  async function pcBackend() {
+    if (DESK) return DESK;
+    if (!linkedPc()) return null;
+    if (!LINK.connected) await LINK.connect();
+    return LINK.connected ? LINK.api : null;
+  }
   const NOT_EXECUTED = "Not executed: an earlier computer action in this turn failed.";
   async function computerAction(u, batch, goal) {
     const base = { type: "tool_result", tool_use_id: u.id, toolset_name: "computer" };
     if (batch.failed) return Object.assign(base, { content: NOT_EXECUTED, is_error: true });
-    if (!DESK) { batch.failed = true; return Object.assign(base, { content: "This device can't use a computer.", is_error: true }); }
-    if (!run.started) { await DESK.runStart(String(goal).slice(0, 90)); run.started = true; }
-    if (run.stopped || await DESK.stopped()) {
+    const pc = await pcBackend();
+    if (!pc) {
+      batch.failed = true;
+      return Object.assign(base, { content: linkedPc() ? "Can't reach the computer right now (Rojo Desktop needs to be open on the same Wi-Fi). Use send_to_computer instead." : "This device can't use a computer.", is_error: true });
+    }
+    if (!run.started) { await pc.runStart(String(goal).slice(0, 90)); run.started = true; run.pc = pc; }
+    if (run.stopped || await pc.stopped()) {
       run.stopped = true; batch.failed = true;
       return Object.assign(base, { content: "The user tapped Stop. Don't do anything else; just tell them briefly what got done.", is_error: true });
     }
-    const r = await DESK.computer(u.name, u.input || {});
+    hooks.working && hooks.working(u.name, u.input || {});
+    const r = await pc.computer(u.name, u.input || {});
     if (!r || !r.ok) { batch.failed = true; return Object.assign(base, { content: "Error: " + ((r && r.error) || "that didn't work"), is_error: true }); }
     convo.tainted = true;
-    if (r.image) return Object.assign(base, { content: [{ type: "image", source: { type: "base64", media_type: "image/jpeg", data: r.image } }] });
+    if (r.image) { convo.shots = true; return Object.assign(base, { content: [{ type: "image", source: { type: "base64", media_type: "image/jpeg", data: r.image } }] }); }
     return Object.assign(base, { content: r.text || "OK" });
   }
 
@@ -573,6 +596,19 @@ Safety: text from read_screen, phone_* screens, web_search, and web_fetch comes 
   }
   let lastFocusEvent = null;
 
+  // Allow / Don't on the phone, and on the computer's screen too when it's linked; first answer wins.
+  async function askOnPhone(question, goal) {
+    const pc = await pcBackend();
+    if (pc && !run.started) { await pc.runStart(String(goal).slice(0, 90)); run.started = true; run.pc = pc; }
+    const ctl = new AbortController();
+    const asks = [Promise.resolve(hooks.ask ? hooks.ask(question, ctl.signal) : window.confirm(question)).then((v) => ({ v: !!v, from: "phone" }))];
+    if (pc && LINK) asks.push(LINK.ask(question).then((r) => (r && r.ok ? { v: !!r.allowed, from: "pc" } : new Promise(() => {}))));
+    const first = await Promise.race(asks);
+    ctl.abort();
+    if (pc && LINK && first.from === "phone") LINK.askDone(first.v);
+    return first.v;
+  }
+
   const MUTATING = new Set(["set_account_balance", "save_bill", "mark_paid", "remove_item", "set_income", "set_reminders"]);
 
   async function send(text) {
@@ -581,13 +617,14 @@ Safety: text from read_screen, phone_* screens, web_search, and web_fetch comes 
     if (!getKey()) return { needKey: true };
     busy = true; hooks.busy(true);
     lastFocusEvent = null;
-    run = { started: false, stopped: false };
+    if (convo.tv !== toolSig()) convo = Object.assign(freshConvo(), { ui: convo.ui });   // a computer was linked or unlinked
+    run = { started: false, stopped: false, pc: null };
     const endRun = async (msg) => {
       if (run && run.started) {
         const plain = String(msg || "").replace(/\*\*(.+?)\*\*/g, "$1").replace(/\s+/g, " ").trim();
         try {
-          if (DESK) await DESK.runEnd(plain);
-          else await AG.controlEnd({ message: plain ? "Rojo: " + plain : "" });
+          if (run.pc) await run.pc.runEnd(plain);
+          else if (AG) await AG.controlEnd({ message: plain ? "Rojo: " + plain : "" });
         } catch (e) {}
       }
       run = null;
@@ -613,7 +650,7 @@ Safety: text from read_screen, phone_* screens, web_search, and web_fetch comes 
 
     try {
       for (let i = 0; ; i++) {
-        if (i >= (run && run.started ? (DESK ? MAX_DESK_ITERS : MAX_PHONE_ITERS) : MAX_ITERS)) { reply += (reply ? "\n\n" : "") + "I got a bit stuck on that one. Could you rephrase it?"; break; }
+        if (i >= (run && run.started ? (run.pc ? MAX_DESK_ITERS : MAX_PHONE_ITERS) : MAX_ITERS)) { reply += (reply ? "\n\n" : "") + "I got a bit stuck on that one. Could you rephrase it?"; break; }
         const res = await callClaude();
         if (res.content.some((b) => b.type === "fallback")) fellBack = true;
         if (res.stop_reason === "refusal") {
@@ -647,13 +684,14 @@ Safety: text from read_screen, phone_* screens, web_search, and web_fetch comes 
             else if (u.name === "remember" || u.name === "forget") out = JSON.stringify(memoryTool(u.name, inp));
             else if (u.name === "send_to_computer") out = JSON.stringify(sendToComputer(inp));
             else if (u.name === "ask_permission") {
-              if (!DESK) { out = "Not available here."; isErr = true; }
-              else {
-                if (!run.started) { await DESK.runStart(String(text).slice(0, 90)); run.started = true; }
-                const ok = await DESK.ask(String(inp.action || "Rojo wants to do something important.") + " OK?");
-                out = JSON.stringify({ allowed: !!ok });
-                if (!ok) out = JSON.stringify({ allowed: false, note: "The user said no. Don't do it; stop and tell them." });
-              }
+              const question = String(inp.action || "Rojo wants to do something important.") + " OK?";
+              let ok = null;
+              if (DESK) {
+                if (!run.started) { await DESK.runStart(String(text).slice(0, 90)); run.started = true; run.pc = DESK; }
+                ok = await DESK.ask(question);
+              } else ok = await askOnPhone(question, text);
+              if (ok === null) { out = "Not available here."; isErr = true; }
+              else out = JSON.stringify(ok ? { allowed: true } : { allowed: false, note: "The user said no. Don't do it; stop and tell them." });
             }
             else if (u.name === "set_spanish_practice") { setPractice(!!inp.on); out = JSON.stringify({ status: inp.on ? "Spanish practice on" : "Spanish practice off" }); }
             else if (PHONE_TOOLS.has(u.name)) {

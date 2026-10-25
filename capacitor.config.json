@@ -3,7 +3,8 @@
   "appName": "BASE",
   "webDir": "www",
   "android": {
-    "backgroundColor": "#0E0F0B"
+    "backgroundColor": "#0E0F0B",
+    "allowMixedContent": true
   },
   "plugins": {
     "SplashScreen": {

@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld("RojoDesktop", {
   openExternal: (url) => ipcRenderer.send("open-external", url),
   setLogin: (on) => ipcRenderer.invoke("set-login", on),
   testInput: () => ipcRenderer.invoke("test-input"),
+  setLinked: (on) => ipcRenderer.send("set-linked", on),
   on: (channel, fn) => {
     const ok = ["cursor", "mood", "pointer", "ripple", "pill", "settings-changed"];
     if (ok.includes(channel)) ipcRenderer.on(channel, (e, ...args) => fn(...args));

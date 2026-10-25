@@ -208,7 +208,11 @@ window.RojoFace = (function () {
       const gx = Math.max(-1.2, Math.min(1.2, S.gx.v)), gy = Math.max(-1.2, Math.min(1.2, S.gy.v));
       eyes.forEach((E, i) => {
         const inward = i === 0 ? 13 : -13;   // eyes sit low and toward the nose
-        const ex = E.L.x + gx * RANGE_X + inward, ey = E.L.y + gy * RANGE_Y + 9;
+        let dx = gx * RANGE_X + inward, dy = gy * RANGE_Y + 9;
+        // keep the eyeball inside the lens oval (diagonals would cross the rim)
+        const MX = LRX - ER - 5, MY = LRY - ER - 5, k = Math.hypot(dx / MX, dy / MY);
+        if (k > 1) { dx /= k; dy /= k; }
+        const ex = E.L.x + dx, ey = E.L.y + dy;
         const sc = S.pupil.v * (curious ? (i === 1 ? 1.12 : 0.94) : 1);   // curious: one eye a bit bigger
         E.g.setAttribute("transform", `translate(${ex.toFixed(2)} ${ey.toFixed(2)}) scale(${sc.toFixed(3)})`);
         const top = -ER - 3 + (2 * ER + 6) * closed;

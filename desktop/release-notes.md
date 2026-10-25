@@ -1,3 +1,20 @@
+## Rojo Desktop 1.1: your phone is Rojo, your computer is his hands
+
+When BASE on your phone is linked (same sync token and passphrase), **Rojo lives on your phone** and this computer does the work:
+
+- **Rojo hides here.** With a phone linked, the little Rojo in the corner goes away. Want him back on the computer too? Right-click the tray icon → **Show Rojo on this computer** (or **Talk to Rojo here** for a one-off chat).
+- **His eyes follow your mouse — on the phone.** Open Rojo in the BASE Android app while this computer is on the same Wi-Fi, and he watches your cursor move across the screen.
+- **Talk on the phone, work on the computer.** Hold Rojo on your phone and say *"open Gmail and draft a reply to Sam"*. He clicks and types on this computer while the edges glow red and the Stop pill shows at the top.
+- **Allow from either one.** When he's about to post, send, buy or delete something, the Allow / Don't buttons show on your phone **and** on the computer. Whichever you tap first counts.
+- **Private.** The phone talks straight to this computer over your Wi-Fi, and every message is encrypted with a key that only travels inside BASE's encrypted sync.
+- No phone linked? Rojo works on this computer exactly like before.
+
+**The first time**, Windows may ask whether to allow Rojo on networks: allow it on **Private networks**, or the phone can't reach it. Away from home, or on iPhone, *"on my PC, …"* tasks still queue and run when this computer is on.
+
+Installs over 1.0.0; your settings stay.
+
+---
+
 ## Rojo Desktop: Rojo on your Windows PC or Mac
 
 Rojo sits in the corner of your screen and **his eyes follow your mouse**. Click him to chat. Ask him anything, or tell him what to do on the computer, like *"open Gmail and draft a reply to Sam"*.
