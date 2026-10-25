@@ -5,5 +5,5 @@
     <string name="package_name">com.amosley.base</string>
     <string name="custom_url_scheme">com.amosley.base</string>
     <string name="agent_service_label">Rojo (BASE)</string>
-    <string name="agent_service_description">Shows Rojo, BASE\'s assistant, over your apps. When you tap Rojo, it reads the text on your screen so you can ask about what you\'re looking at. During a focus session it notices if you open a distracting app (only the app\'s name) and gives you a nudge. Nothing on screen is read until you tap Rojo.</string>
+    <string name="agent_service_description">Shows Rojo, BASE\'s assistant, over your apps. When you tap Rojo, it reads the text on your screen so you can ask about what you\'re looking at. When you ask him to do something in another app or site (like posting on X), he can tap and type for you, with a glowing border and a Stop button while he works; he asks before anything that posts, sends, pays or deletes. During a focus session he notices if you open a distracting app (only the app\'s name) and gives you a nudge. Nothing on screen is read until you tap Rojo or ask him to do something.</string>
 </resources>

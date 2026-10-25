@@ -248,6 +248,7 @@
     render() { renderStatic(); },
     busy(on) {
       sendBtn.disabled = on;
+      document.body.classList.toggle("glow-think", on);
       if (on) { face.setMood("thinking"); showBubble('<span class="typing"><i></i><i></i><i></i></span>'); extraEl.innerHTML = ""; }
     },
     screen() {},
@@ -316,6 +317,7 @@
     }
     listening = true;
     faceWrap.classList.add("listening"); micBtn.classList.add("on");
+    document.body.classList.add("glow-listen");
     face.setMood("listening"); Chirp.play("listen");
     showBubble("<i>Listening…</i>");
     hint.classList.add("gone");
@@ -324,6 +326,7 @@
     } catch (e) {
       listening = false;
       faceWrap.classList.remove("listening"); micBtn.classList.remove("on");
+      document.body.classList.remove("glow-listen");
       face.setMood("surprised");
       showBubble(e.message === "mic" ? "I need microphone access to hear you. Allow it for BASE in your phone settings." : "Hold-to-talk isn't available here. Use your keyboard's mic instead.");
     }
@@ -332,6 +335,7 @@
     if (!listening) return;
     listening = false;
     faceWrap.classList.remove("listening"); micBtn.classList.remove("on");
+    document.body.classList.remove("glow-listen");
     const text = (await Voice.stop() || "").trim();
     if (text) ask(text);
     else { face.setMood(idleMood()); showBubble("I didn't catch that. Hold me a bit longer while you talk?"); }

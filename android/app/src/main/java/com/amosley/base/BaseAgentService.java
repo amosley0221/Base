@@ -93,6 +93,7 @@ public class BaseAgentService extends AccessibilityService {
         "com.google.android.youtube", "com.reddit.frontpage", "com.netflix.mediaclient", "tv.twitch.android.app",
         "com.pinterest", "com.tumblr", "com.bereal.ft", "com.hulu.plus", "com.disney.disneyplus",
         "com.amazon.avod.thirdpartyclient", "com.discord", "com.google.android.apps.youtube.music.pwa"));
+    RojoControl control;
     private String fgPkg = "";
     private long lastNudgeAt = 0;
     private String focusPill = null;
@@ -152,6 +153,7 @@ public class BaseAgentService extends AccessibilityService {
         super.onServiceConnected();
         instance = this;
         wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+        control = new RojoControl(this);
         buildViews();
 
         screenReceiver = new BroadcastReceiver() {
@@ -191,8 +193,19 @@ public class BaseAgentService extends AccessibilityService {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-        // Only used to know which app is in front during a focus session.
-        if (event == null || event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
+        if (event == null) return;
+        // Rojo glances at whatever you tap in other apps (like Bluey following the mouse).
+        if (event.getEventType() == AccessibilityEvent.TYPE_VIEW_CLICKED) {
+            AccessibilityNodeInfo src = event.getSource();
+            if (src != null && attached) {
+                Rect b = new Rect();
+                src.getBoundsInScreen(b);
+                glanceAt(b.exactCenterX(), b.exactCenterY());
+            }
+            return;
+        }
+        // Otherwise only used to know which app is in front during a focus session.
+        if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
         CharSequence pc = event.getPackageName();
         if (pc == null) return;
         String pkg = pc.toString();
@@ -229,6 +242,18 @@ public class BaseAgentService extends AccessibilityService {
         return false;
     }
 
+    /** Turn Rojo's eyes toward a point on the screen for a moment. */
+    void glanceAt(float x, float y) {
+        main.post(() -> {
+            if (mascot == null || !attached) return;
+            int[] loc = new int[2];
+            mascot.getLocationOnScreen(loc);
+            float cx = loc[0] + mascot.getWidth() / 2f;
+            float reach = Math.max(1, screenBounds().width() / 2f);
+            mascot.lookToward((x - cx) / reach);
+        });
+    }
+
     private void onFocusChanged() {
         boolean running = focusRunning();
         if (mascot != null && focusPill == null) mascot.setMood(running ? "focused" : "idle");
@@ -239,6 +264,7 @@ public class BaseAgentService extends AccessibilityService {
 
     private void checkOffTask() {
         if (!focusRunning() || !isDistracting(fgPkg)) return;
+        if (control != null && control.isActive()) { main.postDelayed(offTaskCheck, GRACE_MS); return; }   // Rojo's own doing
         long now = System.currentTimeMillis();
         long wait = COOLDOWN_MS - (now - lastNudgeAt);
         if (wait > 0) { main.postDelayed(offTaskCheck, wait); return; }
@@ -340,6 +366,7 @@ public class BaseAgentService extends AccessibilityService {
 
     private void cleanup() {
         main.removeCallbacksAndMessages(null);
+        if (control != null) control.end(null);
         focusPill = null;
         forcedShow = false;
         detach();
