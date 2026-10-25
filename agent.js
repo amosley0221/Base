@@ -166,6 +166,10 @@
     paintCtx(C.screen);
     renderAll();
     requestAnimationFrame(() => document.body.classList.add("open"));
+    // Opened by saying yes to one of Rojo's offers ("lineup suggestions?"): ask it right away.
+    if (AG && AG.takeOffer && !C.busy) {
+      try { const o = await AG.takeOffer(); if (o && o.ask) { C.newChat(); paintCtx(C.screen); send(o.ask); } } catch (e) {}
+    }
   }
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && !C.busy) refresh();

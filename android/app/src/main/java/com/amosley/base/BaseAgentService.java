@@ -41,6 +41,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -56,6 +57,10 @@ import org.json.JSONObject;
  * During a Rojo focus session it also watches which app is in front (just the
  * app's package name, from window-change events) and nudges you if you stay
  * in a distracting app (social, video, games) for a little while.
+ *
+ * Offers: from the same app name, Rojo can offer help that fits (open a fantasy
+ * football app in season and he asks if you want lineup suggestions). Yes opens
+ * the chat with the screen read and the question asked; ✕ means not today.
  */
 public class BaseAgentService extends AccessibilityService {
 
@@ -76,6 +81,7 @@ public class BaseAgentService extends AccessibilityService {
     private View pillDot;
     private TextView pillText;
     private TextView pillClose;
+    private TextView pillYes;
     private boolean attached;
     private boolean unlocked = true;
     private boolean hiddenUntilUnlock;
@@ -99,6 +105,17 @@ public class BaseAgentService extends AccessibilityService {
     private String focusPill = null;
     private boolean forcedShow = false;
     private final Runnable offTaskCheck = this::checkOffTask;
+    private String offerPill = null;   // the offer showing in the pill ("Want lineup suggestions?")
+    private String offerAsk = null;    // what Rojo is asked if you say yes
+    private final Runnable offerCheck = this::checkOffer;
+    private final Runnable endOffer = () -> {
+        offerPill = null;
+        offerAsk = null;
+        forcedShow = focusPill != null;
+        showPill(false);
+        if (mascot != null) mascot.setMood(focusRunning() ? "focused" : "idle");
+        applyState();
+    };
     private final Runnable endFocusPill = () -> {
         focusPill = null;
         forcedShow = false;
@@ -210,9 +227,70 @@ public class BaseAgentService extends AccessibilityService {
         if (pc == null) return;
         String pkg = pc.toString();
         if (pkg.equals(fgPkg) || isTransient(pkg)) return;
+        boolean ownChanged = pkg.equals(getPackageName()) != fgPkg.equals(getPackageName());
         fgPkg = pkg;
         main.removeCallbacks(offTaskCheck);
         if (focusRunning() && isDistracting(pkg)) main.postDelayed(offTaskCheck, GRACE_MS);
+        main.removeCallbacks(offerCheck);
+        if (offerPill != null) endOffer.run();
+        main.postDelayed(offerCheck, 2500);   // settle in first; only if you're still there
+        if (ownChanged) applyState();         // BASE has its own Rojo, so the floating one steps aside
+    }
+
+    // ------------------------------------------------------------ offers
+    /** What kind of help fits this app, or null. Only the app's name is used. */
+    private String offerKind(String pkg) {
+        if (pkg == null || pkg.isEmpty() || pkg.equals(getPackageName())) return null;
+        String label = appLabel(pkg, null).toLowerCase();
+        if (label.contains("fantasy") || pkg.toLowerCase().contains("fantasy") || label.equals("sleeper")) return "fantasy";
+        return null;
+    }
+
+    /** NFL season, roughly: September through early February. */
+    private static boolean footballSeason(Calendar c) {
+        int m = c.get(Calendar.MONTH);
+        return m >= Calendar.SEPTEMBER || m == Calendar.JANUARY || (m == Calendar.FEBRUARY && c.get(Calendar.DAY_OF_MONTH) <= 10);
+    }
+
+    private void checkOffer() {
+        SharedPreferences p = prefs(this);
+        if (!p.getBoolean("offers", true) || !unlocked || agentOpen || hiddenUntilUnlock || focusPill != null) return;
+        if (focusRunning() || (control != null && control.isActive())) return;
+        String kind = offerKind(fgPkg);
+        if (kind == null) return;
+        Calendar c = Calendar.getInstance();
+        if ("fantasy".equals(kind) && !footballSeason(c)) return;
+        String today = c.get(Calendar.YEAR) + "-" + c.get(Calendar.DAY_OF_YEAR);
+        if (today.equals(p.getString("offerDay_" + kind, ""))) return;   // once a day per kind
+        p.edit().putString("offerDay_" + kind, today).apply();
+
+        int dow = c.get(Calendar.DAY_OF_WEEK);
+        String day = new String[] { "", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" }[dow];
+        boolean waivers = dow == Calendar.TUESDAY || dow == Calendar.WEDNESDAY;
+        if (dow == Calendar.SUNDAY) offerPill = "It's football Sunday! \uD83C\uDFC8 Want lineup suggestions before kickoff?";
+        else if (dow == Calendar.MONDAY) offerPill = "Monday night football tonight. Want a quick lineup check?";
+        else if (dow == Calendar.THURSDAY) offerPill = "Thursday night game tonight. Want lineup suggestions?";
+        else if (waivers) offerPill = "Waivers are coming up. Want pickup and lineup ideas?";
+        else offerPill = "Game weekend's coming. Want lineup suggestions?";
+        offerAsk = "It's " + day + ". I'm in my fantasy football app (" + appLabel(fgPkg, null) + "), it's on my screen. "
+            + (waivers ? "Suggest waiver pickups worth grabbing and any lineup changes for this week. "
+                       : "Look at my lineup and suggest who to start or sit this week. ")
+            + "Check injuries, byes and the latest news. Keep it short: list the changes you'd make and why, then ask if I want you to make them.";
+        forcedShow = true;
+        applyState();
+        if (mascot != null) { mascot.setMood("surprised"); main.postDelayed(() -> { if (offerPill != null && mascot != null) mascot.setMood("idle"); }, 2000); }
+        showPill(true);
+        main.removeCallbacks(endOffer);
+        main.postDelayed(endOffer, 20000);
+    }
+
+    private void acceptOffer() {
+        String ask = offerAsk;
+        main.removeCallbacks(endOffer);
+        endOffer.run();
+        if (ask == null) return;
+        prefs(this).edit().putString("offerAsk", ask).apply();
+        openAgent("offer");
     }
 
     // ------------------------------------------------------------ focus
@@ -368,6 +446,8 @@ public class BaseAgentService extends AccessibilityService {
         main.removeCallbacksAndMessages(null);
         if (control != null) control.end(null);
         focusPill = null;
+        offerPill = null;
+        offerAsk = null;
         forcedShow = false;
         detach();
         if (screenReceiver != null) {
@@ -401,7 +481,7 @@ public class BaseAgentService extends AccessibilityService {
         pill.setPadding(dp(14), dp(9), dp(4), dp(9));
         pill.setElevation(dp(5));
         pill.setVisibility(View.GONE);
-        pill.setOnClickListener(v -> openAgent("nudge"));
+        pill.setOnClickListener(v -> { if (offerPill != null) acceptOffer(); else openAgent("nudge"); });
 
         pillDot = new View(this);
         pill.addView(pillDot, new LinearLayout.LayoutParams(dp(8), dp(8)));
@@ -416,6 +496,22 @@ public class BaseAgentService extends AccessibilityService {
         tlp.leftMargin = dp(9);
         pill.addView(pillText, tlp);
 
+        pillYes = new TextView(this);
+        pillYes.setText("Yes");
+        pillYes.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        pillYes.setTextColor(0xFFFFFFFF);
+        pillYes.setPadding(dp(14), dp(6), dp(14), dp(6));
+        GradientDrawable yb = new GradientDrawable();
+        yb.setCornerRadius(dp(16));
+        yb.setColor(AgentMascotView.ROJO_RED);
+        pillYes.setBackground(yb);
+        pillYes.setVisibility(View.GONE);
+        pillYes.setOnClickListener(v -> acceptOffer());
+        LinearLayout.LayoutParams ylp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        ylp.leftMargin = dp(10);
+        pill.addView(pillYes, ylp);
+
         pillClose = new TextView(this);
         pillClose.setText("✕");
         pillClose.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
@@ -424,6 +520,7 @@ public class BaseAgentService extends AccessibilityService {
         pillClose.setContentDescription("Dismiss");
         pillClose.setOnClickListener(v -> {
             if (focusPill != null) { main.removeCallbacks(endFocusPill); endFocusPill.run(); return; }
+            if (offerPill != null) { main.removeCallbacks(endOffer); endOffer.run(); return; }   // not today
             dismissedNudge = prefs(this).getString("nudge", "");
             showPill(false);
         });
@@ -586,15 +683,17 @@ public class BaseAgentService extends AccessibilityService {
         pillText.setTextColor(dark ? 0xFFECEEE0 : 0xFF2B2622);
         pillClose.setTextColor(dark ? 0xFFECEEE0 : 0xFF2B2622);
 
-        String tone = focusPill != null ? "bad" : p.getString("nudgeTone", "info");
+        String tone = focusPill != null ? "bad" : offerPill != null ? "info" : p.getString("nudgeTone", "info");
         GradientDrawable dot = new GradientDrawable();
         dot.setShape(GradientDrawable.OVAL);
         dot.setColor("bad".equals(tone) ? 0xFFE8281E : "warn".equals(tone) ? 0xFFE0A030 : accent);
         pillDot.setBackground(dot);
-        pillText.setText(focusPill != null ? focusPill : p.getString("nudge", ""));
+        pillText.setText(focusPill != null ? focusPill : offerPill != null ? offerPill : p.getString("nudge", ""));
+        pillYes.setVisibility(focusPill == null && offerPill != null ? View.VISIBLE : View.GONE);
 
         // Nudges show Rojo even if the floating bubble is turned off.
-        boolean want = (p.getBoolean("bubble", true) || forcedShow) && unlocked && !agentOpen && !hiddenUntilUnlock;
+        boolean want = (p.getBoolean("bubble", true) || forcedShow) && unlocked && !agentOpen && !hiddenUntilUnlock
+            && !getPackageName().equals(fgPkg);
         if (want && !attached) {
             try {
                 wm.addView(root, lp);

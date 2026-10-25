@@ -40,6 +40,7 @@ public class BaseAgentPlugin extends Plugin {
         r.put("accessibility", serviceEnabled());
         r.put("running", BaseAgentService.instance != null);
         r.put("bubble", prefs().getBoolean("bubble", true));
+        r.put("offers", prefs().getBoolean("offers", true));
         r.put("notifications", NotificationManagerCompat.from(getContext()).areNotificationsEnabled());
         r.put("sdk", Build.VERSION.SDK_INT);
         r.put("inAgent", getActivity() instanceof AgentActivity);
@@ -79,6 +80,21 @@ public class BaseAgentPlugin extends Plugin {
         prefs().edit().putBoolean("bubble", Boolean.TRUE.equals(call.getBoolean("enabled", true))).apply();
         BaseAgentService.refreshFromPrefs();
         call.resolve();
+    }
+
+    /** Rojo offering help in other apps (e.g. lineup tips when you open a fantasy football app). */
+    @PluginMethod
+    public void setOffers(PluginCall call) {
+        prefs().edit().putBoolean("offers", Boolean.TRUE.equals(call.getBoolean("enabled", true))).apply();
+        call.resolve();
+    }
+
+    /** The request from an offer you said yes to (once), so the chat sheet can send it. */
+    @PluginMethod
+    public void takeOffer(PluginCall call) {
+        String ask = prefs().getString("offerAsk", "");
+        prefs().edit().remove("offerAsk").apply();
+        call.resolve(new JSObject().put("ask", ask == null ? "" : ask));
     }
 
     @PluginMethod
