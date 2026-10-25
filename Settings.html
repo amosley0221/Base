@@ -33,6 +33,9 @@
   .sync-choice .note { margin-bottom: 12px; }
   .set-status.err { color: var(--red); border-color: var(--red); }
   .set-status.err i { background: var(--red); }
+  .pc-switch { display: inline-flex; border: 1px solid var(--edge); border-radius: 100px; padding: 3px; gap: 3px; }
+  .pc-switch button { font: inherit; font-size: 14px; border: 0; border-radius: 100px; padding: 8px 16px; background: transparent; color: var(--ink); cursor: pointer; }
+  .pc-switch button.on { background: var(--red); color: #fff; }
   .mem-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-width: 64ch; }
   .mem-list li { display: flex; gap: 10px; align-items: flex-start; padding: 9px 12px; border: 1px solid var(--edge); border-radius: 12px; font-size: 14.5px; line-height: 1.45; }
   .mem-list li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
@@ -104,6 +107,18 @@
       <button class="btn btn--red" id="aiSave" data-cursor>Save key</button>
       <button class="btn btn--ghost btn--sm" id="aiClear" data-cursor>Clear</button>
     </div>
+  </section>
+
+  <!-- ROJO ON YOUR COMPUTER -->
+  <section class="card panel" id="pcPanel">
+    <div class="panel-title"><h2>Rojo on your computer</h2><span class="hint">Windows &amp; Mac</span></div>
+    <p class="note">Install <b>Rojo Desktop</b> on your Windows PC or Mac and he can use the computer for you. Ask him there, or from your phone ("on my PC, …"). Both need <b>Sync between devices</b> turned on with the same token and passphrase.</p>
+    <div class="pc-switch" role="radiogroup" aria-label="Default computer">
+      <button type="button" data-pc="windows" role="radio">Windows PC</button>
+      <button type="button" data-pc="mac" role="radio">Mac</button>
+    </div>
+    <p class="note" style="margin:10px 0 0" id="pcStatus"></p>
+    <div class="btn-row" style="margin-top:12px"><a class="btn btn--ghost btn--sm" href="https://github.com/amosley0221/Base/releases?q=desktop&amp;expanded=true" target="_blank" rel="noopener">Download Rojo Desktop</a></div>
   </section>
 
   <!-- ROJO'S MEMORY -->

@@ -1,0 +1,40 @@
+{
+  "name": "rojo-desktop",
+  "productName": "Rojo",
+  "version": "1.0.0",
+  "description": "Rojo, your BASE assistant, on your Windows PC or Mac",
+  "main": "main.js",
+  "author": "BASE",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "copy-base": "node scripts/copy-base.mjs",
+    "start": "npm run copy-base && electron .",
+    "dist:win": "npm run copy-base && electron-builder --win nsis --publish never",
+    "dist:mac": "npm run copy-base && electron-builder --mac dmg --publish never"
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "26.17.0"
+  },
+  "build": {
+    "appId": "com.amosley.rojo",
+    "productName": "Rojo",
+    "files": ["main.js", "preload.js", "control/**", "app/**", "build/icon.png"],
+    "directories": { "output": "dist", "buildResources": "build" },
+    "win": { "target": "nsis", "icon": "build/icon.png" },
+    "nsis": { "oneClick": true, "perMachine": false, "artifactName": "Rojo-Setup-${version}.${ext}" },
+    "mac": {
+      "target": ["dmg"],
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.png",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "artifactName": "Rojo-${version}-${arch}.${ext}",
+      "extendInfo": {
+        "LSUIElement": true,
+        "NSAppleEventsUsageDescription": "Rojo uses this to type and press keys for you when you ask him to do something on your Mac."
+      }
+    }
+  }
+}

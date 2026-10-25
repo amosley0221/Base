@@ -116,6 +116,24 @@
     $("#aiClear").addEventListener("click", () => { AI.setKey(""); aiKey.value = ""; refreshAi(); toast("Key cleared"); });
   }
 
+  // ---------- ROJO ON YOUR COMPUTER ----------
+  const PC_KEY = "base_rojo_pc";
+  function pcAgo(t) { if (!t) return "never"; const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? m + " min ago" : m < 1440 ? Math.round(m / 60) + " h ago" : Math.round(m / 1440) + " days ago"; }
+  function renderPc() {
+    let cur = "windows";
+    try { cur = localStorage.getItem(PC_KEY) || "windows"; } catch (e) {}
+    document.querySelectorAll(".pc-switch button").forEach((b) => { b.classList.toggle("on", b.dataset.pc === cur); b.setAttribute("aria-checked", b.dataset.pc === cur ? "true" : "false"); });
+    const st = S.load();
+    const devs = (st.rojo && st.rojo.devices) || [];
+    const line = (k, label) => { const d = devs.find((x) => x.id === k); return label + ": " + (d ? `${d.name || "connected"}, last online ${pcAgo(d.lastSeen)}` : "not set up yet"); };
+    $("#pcStatus").textContent = line("windows", "Windows PC") + " · " + line("mac", "Mac") + ". \"My computer\" means your " + (cur === "mac" ? "Mac" : "Windows PC") + ".";
+  }
+  document.querySelectorAll(".pc-switch button").forEach((b) => b.addEventListener("click", () => {
+    try { localStorage.setItem(PC_KEY, b.dataset.pc); } catch (e) {}
+    renderPc(); toast("Rojo will use your " + (b.dataset.pc === "mac" ? "Mac" : "Windows PC"));
+  }));
+  renderPc();
+
   // ---------- ROJO'S MEMORY ----------
   function memList() { const st = S.load(); return (st.rojo && st.rojo.memory) || []; }
   function saveMem(list) { const st = S.load(); st.rojo = st.rojo || {}; st.rojo.memory = list; S.save(st); }
