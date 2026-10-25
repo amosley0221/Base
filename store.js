@@ -305,6 +305,7 @@
       paidLog: [],
     },
     school: { creditsNeeded: 120, targetGpa: 3.5, creditsPerSem: 15, completed: [], planned: [], assignments: [] },
+    rojo: { memory: [] },   // Rojo's long-term memory (synced)
   };
 
   function clone(o) { return o === undefined ? undefined : JSON.parse(JSON.stringify(o)); }
@@ -380,6 +381,8 @@
     ["tasks", "habits", "notes", "events", "milestones", "teams", "followLeagues"].forEach((k) => {
       if (!Array.isArray(merged[k])) merged[k] = clone(def[k]);
     });
+    merged.rojo = Object.assign({}, def.rojo, saved.rojo || {});
+    if (!Array.isArray(merged.rojo.memory)) merged.rojo.memory = [];
     return merged;
   }
 

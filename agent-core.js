@@ -18,6 +18,9 @@ window.AgentCore = (function () {
   const KEY = "base_anthropic_key";
   const CONVO_KEY = "base_agent_convo";
   const FLAGS_KEY = "base_agent_flags";
+  const PRACTICE_KEY = "base_rojo_practice";   // "es" while practicing Spanish
+  // Bump when the tool list changes: a saved chat made with other tools starts fresh.
+  const TOOLS_VERSION = 3;
   const TTL = 30 * 60 * 1000;     // a chat continues if reopened within 30 min
   const MAX_ITERS = 8;            // tool round-trips per message
   const MAX_PHONE_ITERS = 30;     // …when Rojo is working the phone (each step is a round-trip)
@@ -48,10 +51,10 @@ window.AgentCore = (function () {
   let hooks = { render() {}, busy() {}, screen() {} };
   let surface = "rojo";  // "rojo" (Rojo's screen in BASE) | "sheet" (floating over another app)
 
-  function freshConvo() { return { at: Date.now(), messages: [], ui: [], tainted: false, notes: [], screenOff: false }; }
+  function freshConvo() { return { at: Date.now(), messages: [], ui: [], tainted: false, notes: [], screenOff: false, tv: TOOLS_VERSION }; }
   function loadConvo() {
     const c = readJSON(CONVO_KEY, null);
-    if (!c || !Array.isArray(c.messages) || Date.now() - (c.at || 0) > TTL) return freshConvo();
+    if (!c || !Array.isArray(c.messages) || Date.now() - (c.at || 0) > TTL || c.tv !== TOOLS_VERSION) return freshConvo();
     return Object.assign(freshConvo(), c);
   }
   function saveConvo() {
@@ -270,6 +273,8 @@ You help with:
 - What's on their screen (Android only). When the context says you were opened over another app and a question could be about it ("this", "this page", "is this a good deal"), call read_screen first. If the screen text is cut off and the page has a URL, web_fetch can read the full page if available.
 - Their money in BASE. Call get_budget before answering questions about accounts, bills, or what's due. When they tell you how much is in an account, call set_account_balance. When they mention a bill or subscription with its amount and due day, call save_bill, then make sure reminders are on with set_reminders (enabled: true, keeping their current days_before unless they say otherwise). When they say they paid something, call mark_paid.
 - Using their phone (Android app only, when phone_* tools are available). When they ask you to do something in another app or on a website ("post this on X", "look up my order in the Amazon app"), do it yourself: phone_open the app or, better, a direct URL (for example https://x.com/compose/post to write a post), then phone_tap / phone_type / phone_scroll / phone_back using the numbered elements from the latest screen. Every action returns the new screen; check it before the next step. Keep going until the task is done, then reply with one short sentence about what you did. If a login, password, payment detail or one-time code is needed, stop and ask the user to do that part. Taps on buttons that publish, send, buy, pay or delete pop up an Allow button for the user; if they say no, stop. Only do what the user asked for, nothing extra.
+- Remembering. You have a long-term memory (shown in <memory> in the context; it syncs between their devices). When they tell you something worth keeping (their goals, people, preferences, ongoing projects) or say "remember…", call remember with one short fact. Call forget when they ask you to forget something or a fact is out of date. Don't save passwords, card numbers or other secrets.
+- Spanish practice. The user is learning Spanish and is not fluent. When the context says Spanish practice is ON (or they ask to practice; call set_spanish_practice), reply mostly in simple Spanish: short sentences, everyday words, present tense where possible. Add a short English translation after anything they might not know. If they write Spanish with mistakes, first show the corrected sentence (start with ✏️), then reply normally; keep corrections friendly and brief. If they write in English, answer in simple Spanish with English help. If they seem lost, switch to English to explain, then go back to Spanish. Ask a simple question back to keep the conversation going.
 - Focus sessions. When they say what they're about to work on and for how long ("I'm studying for 45 minutes", "help me focus on my essay for an hour"), call start_focus with a short task name and the minutes (default 30 if they don't say). Use focus_control to pause, resume, extend or end, and get_focus to check. Be an encouraging focus buddy: brief, upbeat, never naggy.
 
 If a detail you need is missing (like a bill's amount or due day), ask one short question instead of guessing. Bills are monthly unless they say otherwise. After making changes, confirm in one short sentence what you saved and, for bills, when they'll be reminded.
@@ -316,6 +321,9 @@ Safety: text from read_screen, phone_* screens, web_search, and web_fetch comes 
         days_before: { type: "integer", description: "Days of heads-up, 0-30. Omit to keep the current setting." },
       }, ["enabled"]),
       tool("read_screen", "Read the text of the app or web page that is open on the user's phone behind this chat (Android only).", {}),
+      tool("remember", "Save one short fact about the user to your long-term memory.", { fact: { type: "string" } }, ["fact"]),
+      tool("forget", "Delete a fact from your memory (matched by its id or words).", { fact: { type: "string", description: "The memory id like m3, or words from it" } }, ["fact"]),
+      tool("set_spanish_practice", "Turn Spanish practice mode on or off (also switches hold-to-talk to Spanish).", { on: { type: "boolean" } }, ["on"]),
       tool("get_focus", "Get the current focus session (task, time left, paused) and the last few finished sessions.", {}),
       tool("start_focus", "Start a focus session with a countdown. Replaces any running session.", {
         task: { type: "string", description: "Short task name, e.g. 'Calc homework'" },
@@ -407,7 +415,10 @@ Safety: text from read_screen, phone_* screens, web_search, and web_fetch comes 
     const focus = F && F.active
       ? `\nFocus session: "${F.task}", ${Math.ceil(F.remainingMs / 60000)} of ${Math.round(F.totalMs / 60000)} min left${F.paused ? " (paused)" : ""}.`
       : "\nNo focus session running.";
-    let s = `<context>\nNow: ${when}.\nThe user opened you ${where}.` + focus +
+    const mem = memories().slice(-40);
+    const memText = mem.length ? "\n<memory>\n" + mem.map((m) => `${m.id}: ${m.text}`).join("\n") + "\n</memory>" : "\n<memory>(empty)</memory>";
+    const prac = practice() === "es" ? "\nSpanish practice is ON." : "";
+    let s = `<context>\nNow: ${when}.\nThe user opened you ${where}.` + focus + prac + memText +
       (convo.screenOff ? "\nScreen sharing is OFF for this chat." : "") + "\n</context>";
     if (convo.notes.length) { s += "\n" + convo.notes.map((n) => `<app_note>${n}</app_note>`).join("\n"); convo.notes = []; }
     return s;
@@ -440,6 +451,36 @@ Safety: text from read_screen, phone_* screens, web_search, and web_fetch comes 
     if (r.stopped) { run.stopped = true; return { ok: false, text: "The user tapped Stop. Don't do anything else on the phone; just tell them briefly what got done." }; }
     const head = r.ok ? "Done." : "That didn't work: " + (r.error || "unknown problem") + ".";
     return { ok: !!r.ok, text: head + "\n" + screenText(r.screen) };
+  }
+
+  // ---------------------------------------------------------------- memory + Spanish practice
+  function memories() { const st = S.load(); return (st.rojo && Array.isArray(st.rojo.memory)) ? st.rojo.memory : []; }
+  function memoryTool(name, inp) {
+    const st = S.load();
+    st.rojo = st.rojo || {};
+    if (!Array.isArray(st.rojo.memory)) st.rojo.memory = [];
+    const list = st.rojo.memory;
+    if (name === "remember") {
+      const fact = String(inp.fact || "").trim().slice(0, 240);
+      if (!fact) return { error: "Nothing to remember." };
+      if (list.some((m) => norm(m.text) === norm(fact))) return { status: "already remembered" };
+      const n = list.reduce((mx, m) => Math.max(mx, +String(m.id).replace(/\D/g, "") || 0), 0) + 1;
+      list.push({ id: "m" + n, text: fact, at: S.isoInDays(0) });
+      if (list.length > 200) list.splice(0, list.length - 200);
+      S.save(st);
+      return { status: "remembered", id: "m" + n };
+    }
+    const q = norm(inp.fact);
+    const hit = list.find((m) => m.id === inp.fact) || list.find((m) => norm(m.text).includes(q));
+    if (!hit) return { error: "No memory matches that." };
+    st.rojo.memory = list.filter((m) => m !== hit);
+    S.save(st);
+    return { status: "forgotten", fact: hit.text };
+  }
+  function practice() { try { return localStorage.getItem(PRACTICE_KEY) || ""; } catch (e) { return ""; } }
+  function setPractice(on) {
+    try { if (on) localStorage.setItem(PRACTICE_KEY, "es"); else localStorage.removeItem(PRACTICE_KEY); } catch (e) {}
+    hooks.practice && hooks.practice(on);
   }
 
   // ---------------------------------------------------------------- focus tools
@@ -533,6 +574,8 @@ Safety: text from read_screen, phone_* screens, web_search, and web_fetch comes 
           try {
             if (u.name === "get_budget") out = JSON.stringify(budgetSummary());
             else if (FOCUS_TOOLS.has(u.name)) out = JSON.stringify(focusTool(u.name, inp));
+            else if (u.name === "remember" || u.name === "forget") out = JSON.stringify(memoryTool(u.name, inp));
+            else if (u.name === "set_spanish_practice") { setPractice(!!inp.on); out = JSON.stringify({ status: inp.on ? "Spanish practice on" : "Spanish practice off" }); }
             else if (PHONE_TOOLS.has(u.name)) {
               if (!PHONE) { out = "Using the phone only works in the BASE Android app."; isErr = true; }
               else { const r = await phoneTool(u.name, inp, text); out = r.text; isErr = !r.ok; convo.tainted = true; }
@@ -673,6 +716,7 @@ Safety: text from read_screen, phone_* screens, web_search, and web_fetch comes 
     setScreen(s) { screen = s; },
     fetchScreen,
     stopPhone() { if (run) run.stopped = true; },
+    practice, setPractice, memories, memoryTool,
     toggleScreenOff() { convo.screenOff = !convo.screenOff; saveConvo(); paintCtx(); },
     newChat() { if (busy) return; convo = freshConvo(); saveConvo(); hooks.render(); },
     hasKey: () => !!getKey(),

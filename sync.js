@@ -28,9 +28,9 @@
   const COLLECTIONS = [
     "tasks", "habits", "notes", "events", "milestones", "teams",
     "budget.incomes", "budget.expenses", "budget.accounts", "budget.bills", "budget.subscriptions", "budget.paidLog",
-    "school.completed", "school.planned", "school.assignments",
+    "school.completed", "school.planned", "school.assignments", "rojo.memory",
   ];
-  const CONTAINERS = ["budget", "school"];
+  const CONTAINERS = ["budget", "school", "rojo"];
 
   // ---------------------------------------------------------------- local config
   function readJSON(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }

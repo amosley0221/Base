@@ -43,6 +43,8 @@ body.rojo-body {
 }
 .rj-icon svg { width: 18px; height: 18px; }
 .rj-icon:active { transform: scale(0.94); }
+.rj-es { font-size: 12.5px; letter-spacing: .04em; }
+.rj-es.on { background: var(--rj-red); border-color: var(--rj-red); color: #fff; }
 #rjSound .off { display: none; }
 #rjSound.muted .on { display: none; }
 #rjSound.muted .off { display: block; }
@@ -175,3 +177,39 @@ body.rojo-body.glow-listen::before {
 }
 body.rojo-body.glow-think::before { box-shadow: inset 0 0 0 3px var(--rj-red), inset 0 0 26px 6px rgba(242, 72, 29, .35); }
 @keyframes rj-glow { to { box-shadow: inset 0 0 0 10px var(--rj-red), inset 0 0 64px 20px rgba(242, 72, 29, .7); } }
+
+/* Phone turned sideways: Rojo fills the screen and peeks up from the bottom edge
+   (top half showing, like Bluey). Bubble floats above him; countdown bottom-right. */
+@media (orientation: landscape) and (max-height: 560px) {
+  body.rojo-body { background: var(--rj-bg) !important; }
+  .rj-top { position: fixed; top: 0; left: 0; right: 0; z-index: 30; min-height: 0; padding: 8px 14px 0; padding-top: max(8px, var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); }
+  .rj-back { padding: 4px; }
+  .rj-icon { width: 34px; height: 34px; }
+  .rj-stage { position: fixed; inset: 0; padding: 0; display: block; overflow: hidden; }
+  .rj-face-wrap {
+    position: absolute; left: 50%; bottom: 0; margin: 0; order: 0;
+    width: min(92vw, 128dvh, 900px);
+    transform: translate(-50%, 31%);   /* top ~70% showing: eyes mid-screen, like Bluey */
+  }
+  .rj-face-wrap::after { display: none; }
+  .rj-bubble {
+    position: absolute; z-index: 12; left: 50%; top: 52px; transform: translateX(-50%);
+    max-width: min(70vw, 680px); max-height: 34dvh; font-size: 16px; padding: 10px 16px;
+  }
+  .rj-bubble.empty { transform: translateX(-50%) scale(.9); }
+  .rj-said { position: absolute; z-index: 12; top: 14px; left: 50%; transform: translateX(-50%); max-width: 46vw; font-size: 12.5px; }
+  .rj-hint { display: none; }
+  .rj-chips { display: none; }
+  .rj-input {
+    position: fixed; z-index: 20; left: 50%; bottom: 8px; transform: translateX(-50%); width: min(54vw, 560px); opacity: .92;
+    padding: 0; padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  }
+  .rj-input textarea { background: rgba(255, 255, 255, .9); color: #241712; border-color: transparent; padding: 8px 14px; }
+  html.mode-dark .rj-input textarea { background: rgba(20, 18, 14, .85); color: var(--rj-ink); }
+  .rj-mic, .rj-send { width: 40px; height: 40px; }
+  .rj-mic { background: rgba(255, 255, 255, .9); color: #241712; border-color: transparent; }
+  .rj-focus { position: fixed; z-index: 21; left: 0; right: 0; bottom: 58px; padding: 0 18px; pointer-events: none; }
+  .rj-focus > * { pointer-events: auto; }
+  .rj-clock { color: #fff; text-shadow: 0 2px 18px rgba(0, 0, 0, .35); font-size: clamp(44px, 12dvh, 86px); }
+  .rj-task::before { color: var(--rj-red); }
+}

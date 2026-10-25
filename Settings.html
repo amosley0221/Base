@@ -33,6 +33,11 @@
   .sync-choice .note { margin-bottom: 12px; }
   .set-status.err { color: var(--red); border-color: var(--red); }
   .set-status.err i { background: var(--red); }
+  .mem-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-width: 64ch; }
+  .mem-list li { display: flex; gap: 10px; align-items: flex-start; padding: 9px 12px; border: 1px solid var(--edge); border-radius: 12px; font-size: 14.5px; line-height: 1.45; }
+  .mem-list li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .mem-list li button { flex: none; border: 0; background: none; color: var(--ink-faint); font-size: 16px; cursor: pointer; padding: 0 4px; }
+  .mem-list .empty { color: var(--ink-faint); border-style: dashed; }
   .wx-results { display: grid; gap: 8px; margin-top: 12px; max-width: 60ch; }
   .wx-results button { text-align: left; font: inherit; font-size: 15px; color: var(--ink); background: var(--paper); border: 1px solid var(--edge); border-radius: 12px; padding: 11px 14px; cursor: pointer; }
   .wx-results button small { color: var(--ink-soft); margin-left: 6px; }
@@ -98,6 +103,21 @@
       <input class="field" id="aiKey" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false" style="flex:1;min-width:220px" />
       <button class="btn btn--red" id="aiSave" data-cursor>Save key</button>
       <button class="btn btn--ghost btn--sm" id="aiClear" data-cursor>Clear</button>
+    </div>
+  </section>
+
+  <!-- ROJO'S MEMORY -->
+  <section class="card panel" id="memoryPanel">
+    <div class="panel-title"><h2>Rojo's memory</h2><span class="hint" id="memCount">0 things</span></div>
+    <p class="note">Things Rojo keeps between chats, like your goals, people and preferences. Tell him "remember…" or "forget…", or edit here. It syncs between your devices. To share it with ChatGPT (your Dot), copy it and paste it into ChatGPT. To bring things from ChatGPT here, ask ChatGPT "What do you remember about me?" and paste its answer below, one fact per line.</p>
+    <ul class="mem-list" id="memList"></ul>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn--red btn--sm" id="memCopy" data-cursor>Copy for ChatGPT</button>
+      <button class="btn btn--ghost btn--sm" id="memImportToggle" data-cursor>Add from ChatGPT</button>
+    </div>
+    <div id="memImport" class="hidden" style="margin-top:12px">
+      <textarea class="field paste" id="memPaste" placeholder="Paste facts here, one per line…"></textarea>
+      <div class="btn-row" style="margin-top:8px"><button class="btn btn--red btn--sm" id="memAdd" data-cursor>Add to Rojo's memory</button></div>
     </div>
   </section>
 

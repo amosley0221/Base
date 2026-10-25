@@ -116,6 +116,46 @@
     $("#aiClear").addEventListener("click", () => { AI.setKey(""); aiKey.value = ""; refreshAi(); toast("Key cleared"); });
   }
 
+  // ---------- ROJO'S MEMORY ----------
+  function memList() { const st = S.load(); return (st.rojo && st.rojo.memory) || []; }
+  function saveMem(list) { const st = S.load(); st.rojo = st.rojo || {}; st.rojo.memory = list; S.save(st); }
+  function renderMem() {
+    const list = memList(), ul = $("#memList");
+    $("#memCount").textContent = list.length + (list.length === 1 ? " thing" : " things");
+    ul.innerHTML = "";
+    if (!list.length) { ul.innerHTML = '<li class="empty"><span>Nothing yet. Tell Rojo "remember that…"</span></li>'; return; }
+    list.forEach((m) => {
+      const li = document.createElement("li");
+      li.innerHTML = "<span></span><button type=\"button\" aria-label=\"Forget\">✕</button>";
+      li.querySelector("span").textContent = m.text;
+      li.querySelector("button").addEventListener("click", () => { saveMem(memList().filter((x) => x.id !== m.id)); renderMem(); toast("Forgotten"); });
+      ul.appendChild(li);
+    });
+  }
+  $("#memCopy").addEventListener("click", async () => {
+    const list = memList();
+    if (!list.length) { toast("Rojo doesn't remember anything yet"); return; }
+    const text = "Here's what my BASE assistant Rojo knows about me. Please remember these:\n" + list.map((m) => "- " + m.text).join("\n");
+    try { await navigator.clipboard.writeText(text); toast("Copied — paste it into ChatGPT"); }
+    catch (e) { $("#memPaste").value = text; $("#memImport").classList.remove("hidden"); toast("Couldn't copy; select the text below"); }
+  });
+  $("#memImportToggle").addEventListener("click", () => $("#memImport").classList.toggle("hidden"));
+  $("#memAdd").addEventListener("click", () => {
+    const lines = $("#memPaste").value.split(/\n+/).map((l) => l.replace(/^\s*[-*•\d.)]+\s*/, "").trim()).filter((l) => l.length > 2 && !/^here'?s what/i.test(l));
+    if (!lines.length) return;
+    const list = memList();
+    let n = list.reduce((mx, m) => Math.max(mx, +String(m.id).replace(/\D/g, "") || 0), 0);
+    let added = 0;
+    lines.forEach((l) => {
+      if (list.some((m) => m.text.toLowerCase() === l.toLowerCase())) return;
+      list.push({ id: "m" + (++n), text: l.slice(0, 240), at: S.isoInDays(0) }); added++;
+    });
+    saveMem(list.slice(-200));
+    $("#memPaste").value = ""; $("#memImport").classList.add("hidden");
+    renderMem(); toast(`Added ${added} to Rojo's memory`);
+  });
+  renderMem();
+
   // ---------- SYNC BETWEEN DEVICES ----------
   const SY = window.BaseSync;
   function ago(t) {
