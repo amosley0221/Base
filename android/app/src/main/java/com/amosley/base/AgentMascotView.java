@@ -45,8 +45,8 @@ public class AgentMascotView extends View {
     private Shader bodyShader, eyeShader;
     private int shaderSize = -1;
 
-    private static final float[] LENS_X = { 126f, 274f };
-    private static final float LENS_Y = 176f, LRX = 62f, LRY = 77f, ER = 35f;
+    private static final float[] LENS_X = { 128f, 272f };
+    private static final float LENS_Y = 172f, LRX = 62f, LRY = 66f, ER = 30f;
 
     private final Runnable blinker = new Runnable() {
         @Override
@@ -200,8 +200,8 @@ public class AgentMascotView extends View {
         float closed = Math.max(lid, blink);
         float gx = look * 14f;
         for (int i = 0; i < 2; i++) {
-            float inward = i == 0 ? 12f : -12f;
-            float ex = (LENS_X[i] + gx + inward) * s, ey = (LENS_Y + 4 + ("focused".equals(mood) ? 16 : 0)) * s;
+            float inward = i == 0 ? 13f : -13f;
+            float ex = (LENS_X[i] + gx + inward) * s, ey = (LENS_Y + 9 + ("focused".equals(mood) ? 14 : 0)) * s;
             float r = ER * pupil * s;
             c.save();
             c.translate(ex, ey);
@@ -216,7 +216,7 @@ public class AgentMascotView extends View {
                 c.clipRect(-r - 2, top, r + 2, r + 2);
                 eye.setShader(eyeShader);
                 c.drawCircle(0, 0, r, eye);
-                c.drawCircle(11 * s * pupil, -12 * s * pupil, 9.5f * s * pupil, white);
+                c.drawCircle(9 * s * pupil, -10 * s * pupil, 9.5f * s * pupil, white);
                 c.restore();
                 if (closed > 0.12f) {
                     float yy = top + 3 * s;
@@ -230,16 +230,16 @@ public class AgentMascotView extends View {
         }
 
         // glasses
-        frame.setStrokeWidth(8 * s);
+        frame.setStrokeWidth(9.5f * s);
         for (int i = 0; i < 2; i++) {
             oval.set((LENS_X[i] - LRX) * s, (LENS_Y - LRY) * s, (LENS_X[i] + LRX) * s, (LENS_Y + LRY) * s);
             c.drawOval(oval, frame);
         }
-        frame.setStrokeWidth(9 * s);
-        c.drawLine((LENS_X[0] + LRX - 1) * s, (LENS_Y - 6) * s, (LENS_X[1] - LRX + 1) * s, (LENS_Y - 6) * s, frame);
-        frame.setStrokeWidth(8 * s);
-        c.drawLine((LENS_X[0] - LRX) * s, LENS_Y * s, 44 * s, LENS_Y * s, frame);
-        c.drawLine((LENS_X[1] + LRX) * s, LENS_Y * s, 356 * s, LENS_Y * s, frame);
+        frame.setStrokeWidth(10 * s);
+        c.drawLine((LENS_X[0] + LRX - 1) * s, (LENS_Y - 14) * s, (LENS_X[1] - LRX + 1) * s, (LENS_Y - 14) * s, frame);
+        frame.setStrokeWidth(9.5f * s);
+        c.drawLine((LENS_X[0] - LRX) * s, (LENS_Y - 2) * s, 50 * s, (LENS_Y - 2) * s, frame);
+        c.drawLine((LENS_X[1] + LRX) * s, (LENS_Y - 2) * s, 350 * s, (LENS_Y - 2) * s, frame);
         shine.setStrokeWidth(2.4f * s);
         for (int i = 0; i < 2; i++) {
             oval.set((LENS_X[i] - LRX * 0.8f) * s, (LENS_Y - LRY * 0.92f) * s, (LENS_X[i] + LRX * 0.6f) * s, (LENS_Y + LRY * 0.4f) * s);

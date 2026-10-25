@@ -63,8 +63,8 @@ window.RojoFace = (function () {
   const rand = (a, b) => a + Math.random() * (b - a);
 
   // Layout in the 400×400 design box.
-  const LENS = [{ x: 126, y: 176 }, { x: 274, y: 176 }];
-  const LRX = 62, LRY = 77, ER = 35;
+  const LENS = [{ x: 128, y: 172 }, { x: 272, y: 172 }];
+  const LRX = 62, LRY = 66, ER = 30;
   const RANGE_X = LRX - ER - 7, RANGE_Y = LRY - ER - 8;
   let uid = 0;
 
@@ -103,7 +103,7 @@ window.RojoFace = (function () {
       const g = el("g", {}, svg);
       const ball = el("g", { "clip-path": `url(#${id}c${i})` }, g);
       el("circle", { cx: 0, cy: 0, r: ER, fill: `url(#${id}e)` }, ball);
-      el("circle", { cx: 11, cy: -12, r: 9.5, fill: "#fff" }, ball);
+      el("circle", { cx: 9, cy: -10, r: 9.5, fill: "#fff" }, ball);
       const lidLine = el("path", { d: "", fill: "none", stroke: "#8f2408", "stroke-width": 4.5, "stroke-linecap": "round", opacity: 0 }, g);
       const shut = el("path", { d: `M ${-ER * 0.75} 2 Q 0 ${ER * 0.6} ${ER * 0.75} 2`, fill: "none", stroke: "#111", "stroke-width": 6, "stroke-linecap": "round", opacity: 0 }, g);
       const happy = el("path", { d: `M ${-ER * 0.78} ${ER * 0.3} Q 0 ${-ER * 0.75} ${ER * 0.78} ${ER * 0.3}`, fill: "none", stroke: "#111", "stroke-width": 7, "stroke-linecap": "round", opacity: 0 }, g);
@@ -111,11 +111,11 @@ window.RojoFace = (function () {
     });
 
     // Glasses
-    const glasses = el("g", { fill: "none", stroke: "#0c0c0c", "stroke-width": 8, "stroke-linecap": "round" }, svg);
+    const glasses = el("g", { fill: "none", stroke: "#0c0c0c", "stroke-width": 9.5, "stroke-linecap": "round" }, svg);
     LENS.forEach((L) => el("ellipse", { cx: L.x, cy: L.y, rx: LRX, ry: LRY }, glasses));
-    el("path", { d: `M ${LENS[0].x + LRX - 1} ${LENS[0].y - 6} L ${LENS[1].x - LRX + 1} ${LENS[1].y - 6}`, "stroke-width": 9 }, glasses);
-    el("path", { d: `M ${LENS[0].x - LRX} ${LENS[0].y} L 44 ${LENS[0].y}` }, glasses);
-    el("path", { d: `M ${LENS[1].x + LRX} ${LENS[1].y} L 356 ${LENS[1].y}` }, glasses);
+    el("path", { d: `M ${LENS[0].x + LRX - 1} ${LENS[0].y - 14} L ${LENS[1].x - LRX + 1} ${LENS[1].y - 14}`, "stroke-width": 10 }, glasses);
+    el("path", { d: `M ${LENS[0].x - LRX} ${LENS[0].y - 2} L 50 ${LENS[0].y - 2}` }, glasses);
+    el("path", { d: `M ${LENS[1].x + LRX} ${LENS[1].y - 2} L 350 ${LENS[1].y - 2}` }, glasses);
     const shine = el("g", { fill: "none", stroke: "#fff", "stroke-width": 2.4, "stroke-linecap": "round", opacity: ".22" }, svg);
     LENS.forEach((L) => el("path", { d: `M ${L.x - LRX * 0.62} ${L.y - LRY * 0.62} Q ${L.x - LRX * 0.2} ${L.y - LRY * 0.98} ${L.x + LRX * 0.25} ${L.y - LRY * 0.92}` }, shine));
 
@@ -154,7 +154,8 @@ window.RojoFace = (function () {
       let want;
       if (touch) want = touch;
       else if (mood === "thinking") want = { x: 0.65 + 0.08 * Math.sin(now * 1.3), y: -0.85 };
-      else if (mood === "listening") want = { x: 0, y: 0.15 };
+      else if (mood === "listening") want = { x: 0.15, y: -0.1 };
+      else if (mood === "happy") want = { x: 0, y: -0.8 };
       else if (mood === "focused") want = { x: 0.1 * Math.sin(now * 0.3), y: 0.55 };
       else {
         if (now > nextSaccade) { wander = { x: rand(-0.85, 0.85), y: rand(-0.7, 0.45) }; nextSaccade = now + rand(0.7, 2.6); }
@@ -167,21 +168,23 @@ window.RojoFace = (function () {
       const wob = talking ? Math.max(talk, 0.35) * (0.5 + 0.5 * Math.sin(now * 17) * Math.sin(now * 6.1)) : 0;
 
       let wPupil = 1, wBlush = 0, wLid = 0, wHappy = 0;
-      if (mood === "listening") { wPupil = 1.1; }
+      let wTilt = 0;
+      if (mood === "listening" || mood === "curious") { wPupil = 1.06; wTilt = 0.16; }
       else if (mood === "surprised") { wPupil = 1.16; }
       else if (mood === "thinking") { wPupil = 0.92; }
-      else if (mood === "happy") { wHappy = 1; wBlush = 0.95; }
+      else if (mood === "happy") { wPupil = 1.18; }
       else if (mood === "sleepy") { wLid = 0.5; wPupil = 0.92; }
       else if (mood === "asleep") { wLid = 1; }
       else if (mood === "focused") { wLid = 0.18; }
       else if (talking) { wPupil = 1.04; }
       step(S.pupil, wPupil, dt); step(S.blush, wBlush, dt); step(S.lid, wLid, dt); step(S.happy, wHappy, dt);
-      step(S.lean, -S.gx.v * 0.05, dt);
+      step(S.lean, -S.gx.v * 0.05 + wTilt, dt);
+      const curious = mood === "listening" || mood === "curious";
       step(S.squash, wob * 0.06, dt);
 
       if (now > nextHop) {
         if (!talking && mood !== "sleepy" && mood !== "asleep" && mood !== "focused") S.hop.vel += rand(150, 280);
-        nextHop = now + rand(7, 15);
+        nextHop = now + (mood === "happy" ? rand(0.5, 0.9) : rand(7, 15));
       }
       step(S.hop, 0, dt);
 
@@ -204,9 +207,10 @@ window.RojoFace = (function () {
       wrap.style.transform = `translateY(${-hopPx}%) rotate(${S.lean.v}rad) scale(${1 + sq + breathe}, ${1 - sq - breathe})`;
       const gx = Math.max(-1.2, Math.min(1.2, S.gx.v)), gy = Math.max(-1.2, Math.min(1.2, S.gy.v));
       eyes.forEach((E, i) => {
-        const inward = i === 0 ? 12 : -12;   // Dot-style: eyes sit toward the nose
-        const ex = E.L.x + gx * RANGE_X + inward, ey = E.L.y + gy * RANGE_Y + 4;
-        E.g.setAttribute("transform", `translate(${ex.toFixed(2)} ${ey.toFixed(2)}) scale(${S.pupil.v.toFixed(3)})`);
+        const inward = i === 0 ? 13 : -13;   // eyes sit low and toward the nose
+        const ex = E.L.x + gx * RANGE_X + inward, ey = E.L.y + gy * RANGE_Y + 9;
+        const sc = S.pupil.v * (curious ? (i === 1 ? 1.12 : 0.94) : 1);   // curious: one eye a bit bigger
+        E.g.setAttribute("transform", `translate(${ex.toFixed(2)} ${ey.toFixed(2)}) scale(${sc.toFixed(3)})`);
         const top = -ER - 3 + (2 * ER + 6) * closed;
         E.lid.setAttribute("y", top.toFixed(2));
         // a felt eyelid edge when half closed (sleepy / focused)
