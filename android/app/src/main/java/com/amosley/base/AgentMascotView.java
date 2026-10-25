@@ -108,6 +108,17 @@ public class AgentMascotView extends View {
         if ("surprised".equals(m)) hop();
     }
 
+    /** Look toward x (-1 left … 1 right) for a couple of seconds, then go back to glancing around. */
+    public void lookToward(float x) {
+        final float to = Math.max(-1f, Math.min(1f, x));
+        removeCallbacks(glancer);
+        ValueAnimator a = ValueAnimator.ofFloat(look, to);
+        a.setDuration(200);
+        a.addUpdateListener(v -> { look = (float) v.getAnimatedValue(); invalidate(); });
+        a.start();
+        postDelayed(glancer, 2200);
+    }
+
     public void hop() {
         ValueAnimator a = ValueAnimator.ofFloat(0f, 1f, 0f);
         a.setDuration(380);

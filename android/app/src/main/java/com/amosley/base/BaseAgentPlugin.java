@@ -147,6 +147,61 @@ public class BaseAgentPlugin extends Plugin {
         call.resolve(r);
     }
 
+    // ---------------------------------------------------------------- Rojo uses the phone
+    private RojoControl control(PluginCall call) {
+        BaseAgentService svc = BaseAgentService.instance;
+        if (svc == null || svc.control == null) {
+            call.resolve(new JSObject().put("ok", false).put("error", "Rojo can't use the phone until 'Rojo (BASE)' is turned on in Accessibility settings."));
+            return null;
+        }
+        return svc.control;
+    }
+
+    /** Start a run: step BASE out of the way and show the glowing border + Stop pill. */
+    @PluginMethod
+    public void controlStart(PluginCall call) {
+        RojoControl c = control(call);
+        if (c == null) return;
+        c.start(call.getString("goal", "your task"));
+        Activity a = getActivity();
+        if (a != null) a.runOnUiThread(() -> a.moveTaskToBack(true));
+        call.resolve(new JSObject().put("ok", true));
+    }
+
+    @PluginMethod
+    public void controlEnd(PluginCall call) {
+        BaseAgentService svc = BaseAgentService.instance;
+        if (svc != null && svc.control != null) svc.control.end(call.getString("message", ""));
+        String msg = call.getString("message", "");
+        if (msg != null && !msg.isEmpty()) {
+            prefs().edit().putString("nudge", msg.length() > 140 ? msg.substring(0, 140) + "…" : msg).putString("nudgeTone", "info").apply();
+            BaseAgentService.nudgeChanged();
+        }
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void phoneLook(PluginCall call) {
+        RojoControl c = control(call);
+        if (c == null) return;
+        try { call.resolve(JSObject.fromJSONObject(c.look())); }
+        catch (Exception e) { call.resolve(new JSObject().put("ok", false).put("error", "Couldn't read the screen.")); }
+    }
+
+    /** One action, then (after the screen settles) a fresh look. */
+    @PluginMethod
+    public void phoneAct(PluginCall call) {
+        RojoControl c = control(call);
+        if (c == null) return;
+        c.act(call.getData(), (r) -> {
+            try {
+                JSObject out = JSObject.fromJSONObject(r);
+                if (!r.optBoolean("stopped")) out.put("screen", JSObject.fromJSONObject(c.look()));
+                call.resolve(out);
+            } catch (Exception e) { call.resolve(new JSObject().put("ok", false).put("error", "Couldn't read the result.")); }
+        });
+    }
+
     @PluginMethod
     public void closeAgent(PluginCall call) {
         Activity a = getActivity();

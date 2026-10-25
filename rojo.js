@@ -68,7 +68,7 @@
   const Voice = (function () {
     const SR = NATIVE && CAP.Plugins ? CAP.Plugins.SpeechRecognition : null;
     const WebSR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const lang = navigator.language || "en-US";
+    const lang = () => (C.practice() === "es" ? "es-US" : (navigator.language || "en-US"));
     let text = "", rec = null, handle = null;
     async function start(onPartial) {
       text = "";
@@ -80,13 +80,13 @@
           const t = e.accumulatedText || e.accumulated || (e.matches && e.matches[0]) || "";
           if (t) { text = t; onPartial(text); }
         });
-        SR.start({ language: lang, partialResults: true, popup: false, addPunctuation: true })
+        SR.start({ language: lang(), partialResults: true, popup: false, addPunctuation: true })
           .then((r) => { if (r && r.matches && r.matches[0]) { text = r.matches[0]; onPartial(text); } }).catch(() => {});
         return;
       }
       if (WebSR) {
         rec = new WebSR();
-        rec.lang = lang; rec.interimResults = true; rec.continuous = true;
+        rec.lang = lang(); rec.interimResults = true; rec.continuous = true;
         rec.onresult = (e) => {
           let s = "";
           for (let i = 0; i < e.results.length; i++) s += e.results[i][0].transcript;
@@ -146,6 +146,7 @@
         face.setMood(mood || "idle");
         if (mood === "happy") setTimeout(() => { if (!typing && face.mood === "happy") face.setMood(idleMood()); }, 1800);
         bubble.scrollTop = 0;
+        renderChips();
         resolve();
       }
       function stepType(now) {
@@ -248,10 +249,29 @@
     render() { renderStatic(); },
     busy(on) {
       sendBtn.disabled = on;
+      document.body.classList.toggle("glow-think", on);
       if (on) { face.setMood("thinking"); showBubble('<span class="typing"><i></i><i></i><i></i></span>'); extraEl.innerHTML = ""; }
     },
     screen() {},
+    practice(on) { paintPractice(); },
   }, { surface: "rojo" });
+
+  // ---------------------------------------------------------------- Spanish practice
+  const esBtn = $("#rjSpanish");
+  function paintPractice() {
+    const on = C.practice() === "es";
+    esBtn.classList.toggle("on", on);
+    esBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    input.placeholder = on ? "Habla con Rojo… (Spanish practice)" : "Ask Rojo…";
+  }
+  esBtn.addEventListener("click", () => {
+    const on = C.practice() !== "es";
+    C.setPractice(on);
+    paintPractice();
+    Chirp.play(on ? "happy" : "hi"); face.hop();
+    typeOut(on ? "¡Vamos a practicar! Hablo despacio y te ayudo. (Let's practice! I'll keep it simple and help you.) ¿Cómo estás hoy?" : "Okay, back to English.", on ? "happy" : "idle");
+  });
+  paintPractice();
 
   // ---------------------------------------------------------------- chips + input
   function renderChips() {
@@ -260,6 +280,7 @@
     const st = F.status();
     const chips = [];
     if (!st.active) chips.push(["Focus with me", "", "I'm working on  for 25 minutes", "I'm working on ".length]);
+    if (C.practice() !== "es") chips.push(["Practice Spanish", "Let's practice Spanish. I'm a beginner."]);
     chips.push(["What's due this week?", "What bills are due in the next 7 days?"]);
     chips.push(["Am I short this month?", "Do I have enough cash for the rest of this month's bills?"]);
     chips.push(["Add a bill", "", "Rent is $ due on the 1st", "Rent is $".length]);
@@ -316,6 +337,7 @@
     }
     listening = true;
     faceWrap.classList.add("listening"); micBtn.classList.add("on");
+    document.body.classList.add("glow-listen");
     face.setMood("listening"); Chirp.play("listen");
     showBubble("<i>Listening…</i>");
     hint.classList.add("gone");
@@ -324,6 +346,7 @@
     } catch (e) {
       listening = false;
       faceWrap.classList.remove("listening"); micBtn.classList.remove("on");
+      document.body.classList.remove("glow-listen");
       face.setMood("surprised");
       showBubble(e.message === "mic" ? "I need microphone access to hear you. Allow it for BASE in your phone settings." : "Hold-to-talk isn't available here. Use your keyboard's mic instead.");
     }
@@ -332,6 +355,7 @@
     if (!listening) return;
     listening = false;
     faceWrap.classList.remove("listening"); micBtn.classList.remove("on");
+    document.body.classList.remove("glow-listen");
     const text = (await Voice.stop() || "").trim();
     if (text) ask(text);
     else { face.setMood(idleMood()); showBubble("I didn't catch that. Hold me a bit longer while you talk?"); }
