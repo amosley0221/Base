@@ -607,8 +607,12 @@ public class BaseAgentService extends AccessibilityService {
                         main.removeCallbacks(longPress);
                         mascot.setPressedLook(false);
                         if (longFired) return true;
-                        if (dragging) snap();
-                        else {
+                        if (dragging) {
+                            // Re-arranging for the other side detaches this view, which sends it a CANCEL;
+                            // so finish the drag first and move him after this touch is done.
+                            dragging = false;
+                            main.post(BaseAgentService.this::snap);
+                        } else {
                             mascot.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
                             openAgent(null);
                         }
@@ -616,7 +620,7 @@ public class BaseAgentService extends AccessibilityService {
                     case MotionEvent.ACTION_CANCEL:
                         main.removeCallbacks(longPress);
                         mascot.setPressedLook(false);
-                        if (dragging) snap();
+                        if (dragging) { dragging = false; main.post(BaseAgentService.this::snap); }
                         return true;
                 }
                 return false;
@@ -662,6 +666,7 @@ public class BaseAgentService extends AccessibilityService {
     }
 
     private void snap() {
+        if (root == null) return;
         int sw = screenBounds().width();
         int w = root.getWidth();
         int left = onRight ? sw - lp.x - w : lp.x;
