@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<script>/* BASE: show load/script errors on screen (with a cache-reset fix) */(function(){var shown={};function box(){var d=document.getElementById("baseErr");if(d)return d;d=document.createElement("div");d.id="baseErr";d.setAttribute("role","alert");d.style.cssText="position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:99999;background:#B11410;color:#fff;font:13px/1.45 -apple-system,system-ui,sans-serif;padding:12px 14px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.35)";d.innerHTML='<b>Something didn’t load.</b> <span id="baseErrMsg" style="display:block;opacity:.9;margin:4px 0 10px;white-space:pre-wrap;word-break:break-word"></span><button id="baseErrFix" style="font:inherit;font-weight:600;background:#fff;color:#B11410;border:0;border-radius:99px;padding:7px 14px;margin-right:8px">Fix &amp; reload</button><button id="baseErrX" style="font:inherit;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6);border-radius:99px;padding:6px 12px">Dismiss</button>';(document.body||document.documentElement).appendChild(d);document.getElementById("baseErrX").onclick=function(){d.remove()};document.getElementById("baseErrFix").onclick=function(){var p=[];try{if(navigator.serviceWorker)p.push(navigator.serviceWorker.getRegistrations().then(function(r){return Promise.all(r.map(function(x){return x.unregister()}))}));if(window.caches)p.push(caches.keys().then(function(k){return Promise.all(k.filter(function(n){return n!=="base-reminders"}).map(function(n){return caches.delete(n)}))}))}catch(e){}Promise.all(p).then(function(){location.reload()},function(){location.reload()})};return d}function report(t){if(shown[t])return;shown[t]=1;var go=function(){var m=box().querySelector("#baseErrMsg");m.textContent+=(m.textContent?"\n":"")+t};if(document.body)go();else document.addEventListener("DOMContentLoaded",go)}window.addEventListener("error",function(e){var el=e.target;if(el&&el!==window&&(el.src||el.href)){var u=(el.src||el.href).split("/").pop();if(/\.(js|css)(\?|$)/.test(u))report("Couldn’t load "+u);return}report((e.message||"Error")+" — "+String(e.filename||"").split("/").pop()+":"+(e.lineno||"?"))},true)})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+<title>Rojo</title>
+<script>try{var d=localStorage.getItem('base_theme')==='dark';if(d)document.documentElement.classList.add('mode-dark');var m=document.createElement('meta');m.name='theme-color';m.content=d?'#0B0B09':'#F4F0EA';document.head.appendChild(m);}catch(e){}</script>
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="apple-touch-icon" href="icons/base-180.png" />
+<link rel="icon" href="icons/base-32.png" />
+<link rel="stylesheet" href="app.css" />
+<link rel="stylesheet" href="rojo.css" />
+</head>
+<body class="rojo-body">
+<header class="rj-top">
+  <a class="rj-back" href="Home.html" aria-label="Back to BASE">&#8592; BASE</a>
+  <div class="rj-task" id="rjTask" hidden></div>
+  <div class="rj-tools">
+    <button class="rj-icon" id="rjHistory" type="button" aria-label="Chat history" title="Chat history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v10H9l-5 4z"/></svg></button>
+    <button class="rj-icon" id="rjSound" type="button" aria-label="Chirps on" title="Chirps">
+      <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/></svg>
+      <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 10l4 4M21 10l-4 4"/></svg></button>
+    <button class="rj-icon" id="rjNew" type="button" aria-label="New chat" title="New chat">&#8635;</button>
+  </div>
+</header>
+
+<main class="rj-stage" id="rjStage">
+  <div class="rj-said" id="rjSaid" hidden></div>
+  <div class="rj-bubble" id="rjBubble" aria-live="polite">
+    <div class="rj-text" id="rjText"></div>
+    <div class="rj-extra" id="rjExtra"></div>
+  </div>
+  <div class="rj-face-wrap" id="rjFaceWrap">
+    <div class="rj-ring" id="rjRing"></div>
+    <div class="rj-face" id="rjFace" role="button" tabindex="0" aria-label="Rojo. Tap to say hi, hold to talk."></div>
+  </div>
+  <div class="rj-hint" id="rjHint">Hold me to talk · tap to say hi</div>
+</main>
+
+<div class="rj-focus" id="rjFocus" hidden>
+  <div class="rj-fctl">
+    <button class="rj-icon" id="rjPause" type="button" aria-label="Pause">
+      <svg class="p" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+      <svg class="r" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5l11 7-11 7z"/></svg></button>
+    <button class="rj-icon" id="rjPlus" type="button" aria-label="Add 5 minutes" title="+5 min">+5</button>
+    <button class="rj-icon" id="rjEnd" type="button" aria-label="End focus" title="End">
+      <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>
+  </div>
+  <div class="rj-clock" id="rjClock">0:00</div>
+</div>
+
+<div class="rj-chips" id="rjChips"></div>
+<form class="rj-input" id="rjForm" autocomplete="off">
+  <button class="rj-mic" id="rjMic" type="button" aria-label="Hold to talk">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+  <textarea id="rjInput" rows="1" placeholder="Ask Rojo…" enterkeyhint="send"></textarea>
+  <button class="rj-send" id="rjSend" type="submit" aria-label="Send">&#8593;</button>
+</form>
+
+<div class="rj-sheet" id="rjSheet" hidden>
+  <div class="rj-sheet-card">
+    <div class="rj-sheet-head"><b>Chat with Rojo</b><button class="rj-icon" id="rjSheetClose" type="button" aria-label="Close">&#10005;</button></div>
+    <div class="rj-log" id="rjLog"></div>
+  </div>
+</div>
+
+<script src="store.js"></script>
+<script src="sync.js"></script>
+<script src="reminders.js"></script>
+<script src="focus.js"></script>
+<script src="vendor/anthropic.js"></script>
+<script src="rojo-face.js"></script>
+<script src="agent-core.js"></script>
+<script src="rojo.js"></script>
+<script src="theme.js"></script>
+<script src="pwa.js"></script>
+</body>
+</html>

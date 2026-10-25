@@ -39,8 +39,7 @@ window.RojoFace = (function () {
 <feMerge><feMergeNode in="d"/><feMergeNode in="dt"/><feMergeNode in="wt"/></feMerge>
 </filter>
 </defs>
-<g filter="url(#f)"><g fill="url(#g)"><circle cx="200" cy="208" r="160"/>${bumps.join("")}</g>
-<ellipse cx="200" cy="300" rx="150" ry="90" fill="url(#s)"/></g>
+<g filter="url(#f)"><g fill="url(#g)"><circle cx="200" cy="208" r="160"/>${bumps.join("")}</g></g>
 </svg>`;
   }
   let bodyURL = null;
