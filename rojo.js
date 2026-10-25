@@ -274,10 +274,10 @@
       });
     },
     // What Rojo is doing on the linked computer right now.
-    working(name, inp) {
+    working(name, inp, note) {
       const what = { screenshot: "Looking at your screen", zoom: "Taking a closer look", type: "Typing", key: "Pressing keys", scroll: "Scrolling", wait: "Waiting a sec" }[name] ||
         (/click|mouse|drag/.test(name) ? "Clicking" : "Working");
-      showBubble('<span class="typing"><i></i><i></i><i></i></span><span class="rj-work">' + C.esc(what) + " on " + C.esc(PL ? PL.name : "your computer") + "…</span>");
+      showBubble('<span class="typing"><i></i><i></i><i></i></span><span class="rj-work">' + C.esc(note || what + " on " + (PL ? PL.name : "your computer")) + "…</span>");
     },
   }, { surface: "rojo" });
 

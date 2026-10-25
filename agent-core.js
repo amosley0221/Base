@@ -281,7 +281,7 @@ You help with:
 - What's on their screen (Android only). When the context says you were opened over another app and a question could be about it ("this", "this page", "is this a good deal"), call read_screen first. If the screen text is cut off and the page has a URL, web_fetch can read the full page if available.
 - Their money in BASE. Call get_budget before answering questions about accounts, bills, or what's due. When they tell you how much is in an account, call set_account_balance. When they mention a bill or subscription with its amount and due day, call save_bill, then make sure reminders are on with set_reminders (enabled: true, keeping their current days_before unless they say otherwise). When they say they paid something, call mark_paid.
 - Using their phone (Android app only, when phone_* tools are available). When they ask you to do something in another app or on a website ("post this on X", "look up my order in the Amazon app"), do it yourself: phone_open the app or, better, a direct URL (for example https://x.com/compose/post to write a post), then phone_tap / phone_type / phone_scroll / phone_back using the numbered elements from the latest screen. Every action returns the new screen; check it before the next step. Keep going until the task is done, then reply with one short sentence about what you did. If a login, password, payment detail or one-time code is needed, stop and ask the user to do that part. Taps on buttons that publish, send, buy, pay or delete pop up an Allow button for the user; if they say no, stop. Only do what the user asked for, nothing extra.
-- Using their computer (Rojo Desktop on Windows or Mac). When the context says you're running on their computer and they ask you to do something on it, use the computer tools: take a screenshot first, then click, type, scroll and press keys, and take another screenshot after anything that changes the screen. Before anything that posts, sends, buys, pays, deletes, or otherwise can't be undone, call ask_permission with a short description and only continue if allowed. Never type passwords, card numbers or one-time codes; ask the user to do that part. Keep going until the task is done, then reply with one short sentence about what you did.
+- Using their computer (Rojo Desktop on Windows or Mac). When the context says you're running on their computer and they ask you to do something on it, use the computer tools: take a screenshot first, then click, type, scroll and press keys, and take another screenshot after anything that changes the screen. Each time you use computer tools, first write a few words saying what you're doing and on what, like "Clicking Post" or "Typing your reply to Sam"; it's shown as a label next to your pointer (not in your reply). Before anything that posts, sends, buys, pays, deletes, or otherwise can't be undone, call ask_permission with a short description and only continue if allowed. Never type passwords, card numbers or one-time codes; ask the user to do that part. Keep going until the task is done, then reply with one short sentence about what you did.
 - Their computer from the phone. When the context says their computer is linked and connected right now, you are the face and voice on the phone and the computer is your hands: when they ask you to do something on it, use the computer tools directly, exactly as above (screenshot first, ask_permission before anything that can't be undone). If the linked computer isn't connected, or no computer is linked, call send_to_computer with the computer (their default is in the context) and a clear, self-contained description of the task. Tell them it runs when Rojo Desktop is open on that computer, and that you'll report back.
 - Remembering. You have a long-term memory (shown in <memory> in the context; it syncs between their devices). When they tell you something worth keeping (their goals, people, preferences, ongoing projects) or say "remember…", call remember with one short fact. Call forget when they ask you to forget something or a fact is out of date. Don't save passwords, card numbers or other secrets.
 - Spanish practice. The user is learning Spanish and is not fluent. When the context says Spanish practice is ON (or they ask to practice; call set_spanish_practice), reply mostly in simple Spanish: short sentences, everyday words, present tense where possible. Add a short English translation after anything they might not know. If they write Spanish with mistakes, first show the corrected sentence (start with ✏️), then reply normally; keep corrections friendly and brief. If they write in English, answer in simple Spanish with English help. If they seem lost, switch to English to explain, then go back to Spanish. Ask a simple question back to keep the conversation going.
@@ -520,7 +520,9 @@ Safety: text from read_screen, phone_* screens, web_search, and web_fetch comes 
     return LINK.connected ? LINK.api : null;
   }
   const NOT_EXECUTED = "Not executed: an earlier computer action in this turn failed.";
-  async function computerAction(u, batch, goal) {
+  const LOOKING = new Set(["screenshot", "zoom", "wait", "cursor_position"]);
+  async function computerAction(u, batch, goal, note) {
+    note = LOOKING.has(u.name) ? "" : String(note || "").replace(/\*\*/g, "").split("\n")[0].slice(0, 70);
     const base = { type: "tool_result", tool_use_id: u.id, toolset_name: "computer" };
     if (batch.failed) return Object.assign(base, { content: NOT_EXECUTED, is_error: true });
     const pc = await pcBackend();
@@ -533,8 +535,8 @@ Safety: text from read_screen, phone_* screens, web_search, and web_fetch comes 
       run.stopped = true; batch.failed = true;
       return Object.assign(base, { content: "The user tapped Stop. Don't do anything else; just tell them briefly what got done.", is_error: true });
     }
-    hooks.working && hooks.working(u.name, u.input || {});
-    const r = await pc.computer(u.name, u.input || {});
+    hooks.working && hooks.working(u.name, u.input || {}, note);
+    const r = await pc.computer(u.name, u.input || {}, note);
     if (!r || !r.ok) { batch.failed = true; return Object.assign(base, { content: "Error: " + ((r && r.error) || "that didn't work"), is_error: true }); }
     convo.tainted = true;
     if (r.image) { convo.shots = true; return Object.assign(base, { content: [{ type: "image", source: { type: "base64", media_type: "image/jpeg", data: r.image } }] }); }
@@ -660,8 +662,10 @@ Safety: text from read_screen, phone_* screens, web_search, and web_fetch comes 
         }
         if (res.content.some((b) => b.type === "server_tool_use" || /_tool_result$/.test(b.type || ""))) convo.tainted = true;
         const said = res.content.filter((b) => b.type === "text").map((b) => b.text).join("").trim();
-        if (said) reply += (reply ? "\n\n" : "") + said;
         const uses = res.content.filter((b) => b.type === "tool_use");
+        // Text before computer actions is a note for Rojo's pointer ("Clicking Post"), not part of the reply.
+        const note = res.stop_reason === "tool_use" && uses.some((u) => u.toolset_name === "computer") ? said : "";
+        if (said && !note) reply += (reply ? "\n\n" : "") + said;
 
         if (res.stop_reason === "max_tokens") {
           if (uses.length) { rollback(); reply = "That answer ran too long. Try a narrower question."; }
@@ -675,7 +679,7 @@ Safety: text from read_screen, phone_* screens, web_search, and web_fetch comes 
         const results = [];
         const batch = { failed: false };
         for (const u of uses) {
-          if (u.toolset_name === "computer") { results.push(await computerAction(u, batch, text)); continue; }
+          if (u.toolset_name === "computer") { results.push(await computerAction(u, batch, text, note)); continue; }
           const inp = u.input || {};
           let out, isErr = false;
           try {

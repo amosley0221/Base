@@ -200,23 +200,39 @@ function toOverlay(c) {
   return { x: c[0] / shot.k / shot.sf, y: c[1] / shot.k / shot.sf };
 }
 
-function pointAt(c) {
-  const o = toOverlay(c);
-  if (!o || !overlay) return Promise.resolve();
-  overlay.webContents.send("pointer", o);
+// Rojo's cursor glides to the spot (arrow tip = the exact point) with a label saying what he's doing.
+function pointAt(c, label) {
+  const o = c && toOverlay(c);
+  if (!o || !overlay) { if (label) act(null, label); return Promise.resolve(); }
+  overlay.webContents.send("pointer", Object.assign(o, { label: label || "" }));
   return new Promise((r) => setTimeout(r, 480));
 }
+function act(kind, label) { if (overlay) overlay.webContents.send("act", { kind, label }); }
+// Start his cursor where your mouse is right now.
+function cursorHome() {
+  if (!overlay) return;
+  const send = () => {
+    const p = screen.getCursorScreenPoint(), b = overlay.getBounds();
+    overlay.webContents.send("cursor-reset");
+    overlay.webContents.send("pointer", { x: p.x - b.x, y: p.y - b.y, instant: true, label: "On it!" });
+  };
+  if (overlay.webContents.isLoading()) overlay.webContents.once("did-finish-load", send); else send();
+}
+const KEYNAME = { ctrl: "Ctrl", control: "Ctrl", shift: "Shift", alt: "Alt", super: "Win", cmd: "Cmd", command: "Cmd", return: "Enter", enter: "Enter", escape: "Esc", esc: "Esc", back_space: "Backspace", backspace: "Backspace", delete: "Delete", tab: "Tab", space: "Space", page_down: "Page Down", page_up: "Page Up" };
+const prettyKeys = (combo) => String(combo || "").split("+").map((k) => KEYNAME[k.trim().toLowerCase()] || (k.trim().length === 1 ? k.trim().toUpperCase() : k.trim())).join("+");
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function computer(name, inp) {
+async function computer(name, inp, note) {
   inp = inp || {};
+  note = String(note || "").replace(/\s+/g, " ").trim().slice(0, 70);
   if (run.stopped) return { ok: false, error: "The user tapped Stop." };
   const btn = { left_click: "left", right_click: "right", middle_click: "middle", double_click: "left", triple_click: "left" };
   const count = { double_click: 2, triple_click: 3 };
+  const verb = { left_click: "Clicking", right_click: "Right-clicking", middle_click: "Middle-clicking", double_click: "Double-clicking", triple_click: "Triple-clicking" };
   switch (name) {
-    case "screenshot": return { ok: true, image: await takeScreenshot() };
-    case "zoom": return { ok: true, image: await takeScreenshot(inp.region) };
+    case "screenshot": act("look", note || "Looking at the screen"); return { ok: true, image: await takeScreenshot() };
+    case "zoom": act("look", note || "Taking a closer look"); return { ok: true, image: await takeScreenshot(inp.region) };
     case "cursor_position": {
       const r = await input.send({ op: "cursor" });
       if (!r.ok) return r;
@@ -224,33 +240,42 @@ async function computer(name, inp) {
       const k = shot ? shot.k : geometry().k;
       return { ok: true, text: `[${Math.round(r.x * sf * k)}, ${Math.round(r.y * sf * k)}]` };
     }
-    case "mouse_move": { await pointAt(inp.coordinate); const p = toScreen(inp.coordinate); return input.send({ op: "move", x: p.x, y: p.y }); }
+    case "mouse_move": { await pointAt(inp.coordinate, note || "Moving here"); const p = toScreen(inp.coordinate); return input.send({ op: "move", x: p.x, y: p.y }); }
     case "left_click": case "right_click": case "middle_click": case "double_click": case "triple_click": {
       const cmd = { op: "click", button: btn[name], count: count[name] || 1, mods: inp.text || "" };
-      if (inp.coordinate) { await pointAt(inp.coordinate); Object.assign(cmd, toScreen(inp.coordinate)); }
+      if (inp.coordinate) { await pointAt(inp.coordinate, note || verb[name]); Object.assign(cmd, toScreen(inp.coordinate)); }
+      else act(null, note || verb[name]);
       const r = await input.send(cmd);
-      if (overlay) overlay.webContents.send("ripple");
+      act("click");
       await sleep(250);
       return r;
     }
     case "left_click_drag": {
-      await pointAt(inp.start_coordinate);
+      await pointAt(inp.start_coordinate, note || "Dragging");
+      act("click");
       const a = toScreen(inp.start_coordinate), b = toScreen(inp.coordinate);
+      const moved = pointAt(inp.coordinate, note || "Dragging");
       const r = await input.send({ op: "drag", x1: a.x, y1: a.y, x2: b.x, y2: b.y, mods: inp.text || "" });
-      await pointAt(inp.coordinate);
+      await moved;
       return r;
     }
-    case "left_mouse_down": return input.send({ op: "down" });
-    case "left_mouse_up": return input.send({ op: "up" });
+    case "left_mouse_down": act("click", note || "Holding the mouse button"); return input.send({ op: "down" });
+    case "left_mouse_up": act(null, note || "Letting go"); return input.send({ op: "up" });
     case "scroll": {
       const cmd = { op: "scroll", dir: inp.scroll_direction || "down", amount: inp.scroll_amount || 3, mods: inp.text || "" };
-      if (inp.coordinate) { await pointAt(inp.coordinate); Object.assign(cmd, toScreen(inp.coordinate)); }
+      const what = note || "Scrolling " + cmd.dir;
+      if (inp.coordinate) { await pointAt(inp.coordinate, what); Object.assign(cmd, toScreen(inp.coordinate)); }
+      else act("scroll", what);
       const r = await input.send(cmd); await sleep(250); return r;
     }
-    case "type": { pillText("Typing…"); const r = await input.send({ op: "type", text: String(inp.text || "") }); await sleep(150); return r; }
-    case "key": { const r = await input.send({ op: "key", combo: String(inp.text || ""), repeat: Math.min(100, inp.repeat || 1) }); await sleep(200); return r; }
-    case "hold_key": return input.send({ op: "hold", combo: String(inp.text || ""), ms: Math.min(300, +inp.duration || 1) * 1000 });
-    case "wait": await sleep(Math.min(300, +inp.duration || 1) * 1000); return { ok: true };
+    case "type": {
+      const t = String(inp.text || "");
+      act("type", note || "Typing \u201C" + (t.length > 32 ? t.slice(0, 32) + "\u2026" : t) + "\u201D");
+      const r = await input.send({ op: "type", text: t }); await sleep(150); act("done"); return r;
+    }
+    case "key": { act(null, note || "Pressing " + prettyKeys(inp.text)); const r = await input.send({ op: "key", combo: String(inp.text || ""), repeat: Math.min(100, inp.repeat || 1) }); await sleep(200); return r; }
+    case "hold_key": act(null, note || "Holding " + prettyKeys(inp.text)); return input.send({ op: "hold", combo: String(inp.text || ""), ms: Math.min(300, +inp.duration || 1) * 1000 });
+    case "wait": act("wait", note || "Waiting a moment\u2026"); await sleep(Math.min(300, +inp.duration || 1) * 1000); return { ok: true };
   }
   return { ok: false, error: "Unknown action " + name };
 }
@@ -264,6 +289,7 @@ function startRun(goal, fromPhone) {
   if (!overlay) createOverlay();
   toggleChat(false);
   overlay.showInactive();
+  cursorHome();
   pill.showInactive();
   pillText((fromPhone ? "Rojo (from your phone): " : "Rojo is on it: ") + String(goal || "").slice(0, 90));
   mood("focused");
@@ -294,8 +320,8 @@ ipcMain.on("pill-action", (e, a) => {
   const p = run.pending; run.pending = null;
   if (p) { p(a === "allow"); if (a === "allow") pillText("Rojo is on it…"); }
 });
-ipcMain.handle("computer", async (e, name, inp) => {
-  try { return await computer(name, inp); }
+ipcMain.handle("computer", async (e, name, inp, note) => {
+  try { return await computer(name, inp, note); }
   catch (err) { return { ok: false, error: String(err && err.message || err) }; }
 });
 
@@ -304,7 +330,7 @@ async function phoneCommand(op, a) {
   switch (op) {
     case "computer":
       if (!run.active) startRun("working on your computer", true);
-      return computer(a.name, a.input);
+      return computer(a.name, a.input, a.note);
     case "runStart": return startRun(a.goal, true);
     case "runEnd": return endRun();
     case "stopped": return { ok: true, stopped: !!run.stopped };

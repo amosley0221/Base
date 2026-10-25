@@ -112,7 +112,7 @@ window.PcLink = (function () {
 
   // The same shape the agent uses for Rojo Desktop's own bridge.
   const api = {
-    computer: (name, input) => call("computer", { name, input }, Math.max(120000, ((input && input.duration) || 0) * 1000 + 30000)),
+    computer: (name, input, note) => call("computer", { name, input, note }, Math.max(120000, ((input && input.duration) || 0) * 1000 + 30000)),
     runStart: (goal) => call("runStart", { goal }),
     runEnd: (message) => call("runEnd", { message }),
     stopped: async () => { const r = await call("stopped", {}, 10000); return !!(r && r.stopped); },

@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("RojoDesktop", {
   info: () => ipcRenderer.invoke("info"),
-  computer: (name, input) => ipcRenderer.invoke("computer", name, input),
+  computer: (name, input, note) => ipcRenderer.invoke("computer", name, input, note),
   runStart: (goal) => ipcRenderer.invoke("run-start", goal),
   runEnd: (message) => ipcRenderer.invoke("run-end", message),
   stopped: () => ipcRenderer.invoke("run-stopped"),
@@ -19,7 +19,7 @@ contextBridge.exposeInMainWorld("RojoDesktop", {
   testInput: () => ipcRenderer.invoke("test-input"),
   setLinked: (on) => ipcRenderer.send("set-linked", on),
   on: (channel, fn) => {
-    const ok = ["cursor", "mood", "pointer", "ripple", "pill", "settings-changed"];
+    const ok = ["cursor", "mood", "pointer", "act", "cursor-reset", "ripple", "pill", "settings-changed"];
     if (ok.includes(channel)) ipcRenderer.on(channel, (e, ...args) => fn(...args));
   },
 });
