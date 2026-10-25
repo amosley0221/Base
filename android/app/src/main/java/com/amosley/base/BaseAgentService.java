@@ -159,6 +159,25 @@ public class BaseAgentService extends AccessibilityService {
     static void setAgentOpen(boolean open) {
         agentOpen = open;
         refreshFromPrefs();
+        // The app under the chat sheet never left, so Android may not say it's in front again: look.
+        BaseAgentService s = instance;
+        if (!open && s != null) s.main.postDelayed(s::redetectForeground, 350);
+    }
+
+    /** Which app is really in front (from the window list), when no window-change event tells us. */
+    private void redetectForeground() {
+        try {
+            for (AccessibilityWindowInfo w : getWindows()) {
+                if (w.getType() != AccessibilityWindowInfo.TYPE_APPLICATION || !(w.isActive() || w.isFocused())) continue;
+                AccessibilityNodeInfo r = w.getRoot();
+                if (r == null || r.getPackageName() == null) continue;
+                String pkg = r.getPackageName().toString();
+                if (pkg.equals(getPackageName()) || isTransient(pkg)) return;   // BASE itself (e.g. Rojo's screen) is in front
+                if (!pkg.equals(fgPkg)) fgPkg = pkg;
+                applyState();
+                return;
+            }
+        } catch (Exception ignored) {}
     }
 
     private int dp(float v) {
@@ -227,6 +246,11 @@ public class BaseAgentService extends AccessibilityService {
         if (pc == null) return;
         String pkg = pc.toString();
         if (pkg.equals(fgPkg) || isTransient(pkg)) return;
+        // BASE only counts as "in front" for its main screen; the chat sheet and pop-ups sit over another app.
+        if (pkg.equals(getPackageName())) {
+            CharSequence cls = event.getClassName();
+            if (cls == null || !cls.toString().endsWith(".MainActivity")) return;
+        }
         boolean ownChanged = pkg.equals(getPackageName()) != fgPkg.equals(getPackageName());
         fgPkg = pkg;
         main.removeCallbacks(offTaskCheck);

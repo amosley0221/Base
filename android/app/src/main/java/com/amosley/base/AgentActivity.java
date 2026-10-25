@@ -85,6 +85,12 @@ public class AgentActivity extends BridgeActivity {
     }
 
     @Override
+    public void onPause() {
+        super.onPause();
+        if (isFinishing()) BaseAgentService.setAgentOpen(false);   // closing: bring the floating Rojo back now
+    }
+
+    @Override
     public void onStop() {
         super.onStop();
         BaseAgentService.setAgentOpen(false);
