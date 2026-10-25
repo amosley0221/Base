@@ -292,9 +292,15 @@
     pcBtn.classList.toggle("on", PL.connected);
     pcBtn.title = PL.connected ? PL.name + " is connected" : PL.name + " isn't connected";
   }
+  // Full-screen "peek" (top of Rojo filling the screen, like Bluey): sideways phones, and while linked to the computer.
+  const sideways = window.matchMedia("(orientation: landscape) and (max-height: 560px)");
+  function paintPeek() { document.body.classList.toggle("rj-peek", sideways.matches || !!(PL && PL.connected)); }
+  if (sideways.addEventListener) sideways.addEventListener("change", paintPeek); else sideways.addListener(paintPeek);
+  paintPeek();
   if (PL) {
     PL.onStatus((on) => {
       paintPc();
+      paintPeek();
       if (on) { face.hop(); Chirp.play("hi"); }
     });
     PL.onCursor((nx, ny) => {

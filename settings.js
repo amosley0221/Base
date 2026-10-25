@@ -305,6 +305,7 @@
       step("a11y", st.accessibility);
       step("notif", st.notifications);
       $("#agBubble").checked = !!st.bubble;
+      $("#agOffers").checked = st.offers !== false;
       const ready = key && st.accessibility;
       agStatus.innerHTML = "<i></i> " + (ready ? (st.bubble ? "On" : "Hidden") : "Needs setup");
       agStatus.classList.toggle("ok", !!ready && !!st.bubble);
@@ -313,6 +314,10 @@
       try { await AGT.setBubble({ enabled: e.target.checked }); } catch (err) {}
       toast(e.target.checked ? "Rojo is on" : "Rojo is hidden");
       refreshAgent();
+    });
+    $("#agOffers").addEventListener("change", async (e) => {
+      try { await AGT.setOffers({ enabled: e.target.checked }); } catch (err) {}
+      toast(e.target.checked ? "Rojo will offer help in other apps" : "Rojo won't offer help in other apps");
     });
     document.querySelectorAll("#agSteps [data-open]").forEach((b) => b.addEventListener("click", () => {
       const fn = AGT[b.dataset.open];
