@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Rojo settings</title>
+<link rel="stylesheet" href="chat.css" />
+<style>
+  body { overflow-y: auto; display: block; padding: 22px 24px 40px; }
+  h1 { font-size: 22px; margin: 0 0 4px; } h2 { font-size: 15px; margin: 0 0 6px; }
+  p { color: var(--soft); margin: 0 0 10px; font-size: 14px; }
+  section { background: #fff; border-radius: 16px; padding: 16px 18px; margin-top: 14px; }
+  input[type=password], input[type=text] { width: 100%; font: inherit; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); margin: 4px 0 10px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .btn { font: inherit; font-weight: 600; padding: 8px 16px; border-radius: 99px; border: 1px solid var(--red); background: var(--red); color: #fff; cursor: pointer; }
+  .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+  .status { font-size: 13px; margin-left: 4px; }
+  .ok { color: #1f8a5b; } .bad { color: #b11410; }
+  a { color: var(--red); cursor: pointer; }
+  #face { width: 64px; height: 64px; float: right; margin: -6px 0 0 10px; }
+</style>
+</head>
+<body>
+<div id="face"></div>
+<h1>Rojo on your computer</h1>
+<p>Rojo sits in the corner of your screen and his eyes follow your mouse. Click him to chat. He can use this computer for you: you'll see a red glow and a <b>Stop</b> button while he works, and he asks before anything that posts, sends, pays or deletes.</p>
+
+<section>
+  <h2>1. Claude API key</h2>
+  <p>The same key you use in BASE (from console.anthropic.com). Stored only on this computer.</p>
+  <input type="password" id="key" placeholder="sk-ant-…" autocomplete="off" />
+  <div class="row"><button class="btn" id="saveKey">Save key</button><span class="status" id="keyStatus"></span></div>
+</section>
+
+<section>
+  <h2>2. Link with your phone</h2>
+  <p>Uses BASE's encrypted sync, so Rojo here shares your bills, memory and focus, and can run tasks you send from your phone ("do this on my PC"). Use the <b>same GitHub token and passphrase</b> as in BASE → Settings → Sync between devices.</p>
+  <input type="password" id="token" placeholder="GitHub token (ghp_…)" autocomplete="off" />
+  <input type="password" id="pass" placeholder="Sync passphrase" autocomplete="off" />
+  <div class="row"><button class="btn" id="link">Link</button><button class="btn ghost" id="unlink" hidden>Unlink</button><span class="status" id="syncStatus"></span></div>
+</section>
+
+<section id="perms">
+  <h2>3. Let Rojo use this computer</h2>
+  <p id="permText"></p>
+  <div class="row"><button class="btn ghost" id="testScreen">Test screen access</button><button class="btn ghost" id="testMouse">Test mouse control</button><span class="status" id="testStatus"></span></div>
+</section>
+
+<section>
+  <h2>4. Start with your computer</h2>
+  <label class="row"><input type="checkbox" id="login" /> Open Rojo when I sign in</label>
+</section>
+
+<script src="base/store.js"></script>
+<script>window.BASE_NO_AUTORELOAD = true;</script>
+<script src="base/sync.js"></script>
+<script src="base/rojo-face.js"></script>
+<script src="setup.js"></script>
+</body>
+</html>

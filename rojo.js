@@ -480,6 +480,24 @@
     if (document.visibilityState === "visible") { lastActive = Date.now(); C.reload(); renderStatic(); syncFocusUI(); face.setMood(idleMood()); }
   });
 
+  // ---------------------------------------------------------------- tasks your computer finished
+  function reportComputerTasks() {
+    if (typing || C.busy || listening) return;
+    const st = Store.load();
+    const list = (st.rojo && st.rojo.pcTasks) || [];
+    // While a computer task is out, keep pulling so the result shows up here.
+    if (list.some((x) => x.status === "pending" || x.status === "running") && window.BaseSync && BaseSync.status().enabled) BaseSync.syncNow();
+    const t = list.find((x) => (x.status === "done" || x.status === "failed") && !x.seen);
+    if (!t) return;
+    t.seen = true;
+    Store.save(st);
+    const pc = t.computer === "mac" ? "Mac" : "PC";
+    Chirp.play(t.status === "done" ? "happy" : "uhoh");
+    typeOut(t.status === "done" ? `Your ${pc} finished: ${t.result}` : `Your ${pc} couldn't finish "${t.task.slice(0, 60)}": ${t.result}`, t.status === "done" ? "happy" : "idle");
+  }
+  setInterval(reportComputerTasks, 15000);
+  setTimeout(reportComputerTasks, 4000);
+
   // ---------------------------------------------------------------- start
   syncFocusUI();
   face.setMood(idleMood());

@@ -1,0 +1,87 @@
+name: Rojo Desktop Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, e.g. 1.0.0"
+        required: true
+      publish:
+        description: "Publish a GitHub release"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Smoke-test the Windows input helper
+        shell: pwsh
+        run: |
+          $cmds = @('{"op":"cursor"}', '{"op":"move","x":321,"y":234}', '{"op":"cursor"}', '{"op":"key","combo":"shift","repeat":1}', '{"op":"type","text":""}', '{"op":"key","combo":"nosuchkey","repeat":1}')
+          $out = $cmds | powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File desktop/control/win-input.ps1
+          $out | ForEach-Object { Write-Host $_ }
+          if (-not ($out[0] -match '"ready":true')) { throw "helper didn't start" }
+          if (($out | Measure-Object).Count -ne 7) { throw "expected 7 lines of output" }
+          if (-not ($out[6] -match 'Unknown key')) { throw "unknown key not reported" }
+      - name: Build installer
+        working-directory: desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          npm ci
+          npm version ${{ inputs.version }} --no-git-tag-version --allow-same-version
+          npm run dist:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rojo-windows
+          path: desktop/dist/*.exe
+          if-no-files-found: error
+
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Compile-check the macOS input helper
+        run: osacompile -l JavaScript -o "$RUNNER_TEMP/mac-input.scpt" desktop/control/mac-input.js
+      - name: Build apps (Apple silicon + Intel)
+        working-directory: desktop
+        run: |
+          npm ci
+          npm version ${{ inputs.version }} --no-git-tag-version --allow-same-version
+          npm run copy-base
+          npx electron-builder --mac dmg --arm64 --x64 --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rojo-mac
+          path: desktop/dist/*.dmg
+          if-no-files-found: error
+
+  release:
+    if: ${{ inputs.publish }}
+    needs: [windows, mac]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: desktop-v${{ inputs.version }}
+          name: Rojo Desktop ${{ inputs.version }}
+          target_commitish: ${{ github.sha }}
+          body_path: desktop/release-notes.md
+          files: |
+            artifacts/rojo-windows/*.exe
+            artifacts/rojo-mac/*.dmg

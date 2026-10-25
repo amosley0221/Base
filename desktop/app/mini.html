@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Rojo</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; user-select: none; -webkit-user-select: none; }
+  #face { position: absolute; inset: 6px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="face" title="Click to talk to Rojo · drag to move"></div>
+<script src="base/rojo-face.js"></script>
+<script>
+  const face = RojoFace.create(document.getElementById("face"));
+  const D = window.RojoDesktop;
+  let still = 0;
+  // His eyes follow your mouse anywhere on the screen.
+  D.on("cursor", (p) => {
+    face.lookAtPoint(p.x, p.y);
+    still = 0;
+  });
+  D.on("mood", (m) => face.setMood(m || "idle"));
+  // Drag to move, click to open the chat.
+  let down = null, moved = 0;
+  addEventListener("pointerdown", (e) => { down = { x: e.screenX, y: e.screenY }; moved = 0; try { e.target.setPointerCapture(e.pointerId); } catch (err) {} });
+  addEventListener("pointermove", (e) => {
+    if (!down) return;
+    const dx = e.screenX - down.x, dy = e.screenY - down.y;
+    if (!dx && !dy) return;
+    moved += Math.abs(dx) + Math.abs(dy);
+    if (moved > 4) D.miniDrag(dx, dy);
+    down = { x: e.screenX, y: e.screenY };
+  });
+  addEventListener("pointerup", () => {
+    if (down && moved <= 4) { face.hop(1.2); face.setMood("happy"); setTimeout(() => face.setMood("idle"), 1400); D.miniClick(); }
+    down = null;
+  });
+</script>
+</body>
+</html>

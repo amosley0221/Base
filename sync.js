@@ -28,7 +28,7 @@
   const COLLECTIONS = [
     "tasks", "habits", "notes", "events", "milestones", "teams",
     "budget.incomes", "budget.expenses", "budget.accounts", "budget.bills", "budget.subscriptions", "budget.paidLog",
-    "school.completed", "school.planned", "school.assignments", "rojo.memory",
+    "school.completed", "school.planned", "school.assignments", "rojo.memory", "rojo.pcTasks", "rojo.devices",
   ];
   const CONTAINERS = ["budget", "school", "rojo"];
 
