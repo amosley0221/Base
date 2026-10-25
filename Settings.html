@@ -144,15 +144,15 @@
 
   <!-- FLOATING AGENT -->
   <section class="card panel" id="agentPanel">
-    <div class="panel-title"><h2>Floating agent</h2><span class="set-status" id="agStatus"><i></i> Android app only</span></div>
-    <p class="note">A little BASE buddy that floats over your other apps. <b>Tap it to ask anything</b>: it can read the app or page you're looking at, update your account balances, add bills and set reminders. Drag it to move it; long-press to hide it until you next unlock. Your screen is only read when you tap it, and it's sent to Claude with your question using the key above.</p>
-    <div id="agWeb" class="ios-steps hidden">The floating agent needs the BASE Android app. In a browser you can still chat at <a href="agent.html">agent.html</a>.</div>
+    <div class="panel-title"><h2>Rojo on Android</h2><span class="set-status" id="agStatus"><i></i> Android app only</span></div>
+    <p class="note"><b>Rojo</b> lives in BASE (tap him in the top bar). In the Android app he can also <b>float over your other apps</b>: tap him to ask about what you're looking at, update balances or add bills. During a focus session he notices if you open a distracting app (social, video, games) and gives you a nudge. Drag him to move him; long-press to hide him until you next unlock. Your screen is only read when you tap him, and it's sent to Claude with your question using the key above.</p>
+    <div id="agWeb" class="ios-steps hidden">Rojo floating over other apps needs the BASE Android app. Everywhere else, tap Rojo in the top bar.</div>
     <div id="agNative" class="hidden">
-      <label class="chk" for="agBubble"><input type="checkbox" id="agBubble" /><span class="box"></span> Show the agent over other apps</label>
+      <label class="chk" for="agBubble"><input type="checkbox" id="agBubble" /><span class="box"></span> Show Rojo over other apps</label>
       <ol class="ag-steps" id="agSteps">
         <li data-step="key"><span class="dot"></span><div><b>Claude API key</b><small>Save it in the Claude AI section above.</small></div></li>
         <li data-step="restricted"><span class="dot"></span><div><b>Allow restricted settings</b><small>Android blocks step 3 for apps installed outside the Play Store. Open App info, tap <b>⋮</b> (top right) → <b>Allow restricted settings</b>, and confirm. (If you don't see ⋮, skip this.)</small></div><button class="btn btn--ghost btn--sm" data-open="openAppInfo">App info</button></li>
-        <li data-step="a11y"><span class="dot"></span><div><b>Turn on BASE Agent</b><small>Accessibility → <b>Installed apps</b> → <b>BASE Agent</b> → On. This is what lets it float and read your screen.</small></div><button class="btn btn--ghost btn--sm" data-open="openAccessibilitySettings">Accessibility</button></li>
+        <li data-step="a11y"><span class="dot"></span><div><b>Turn on Rojo (BASE)</b><small>Accessibility → <b>Installed apps</b> → <b>Rojo (BASE)</b> → On. This lets him float, read your screen when you tap him, and nudge you during focus.</small></div><button class="btn btn--ghost btn--sm" data-open="openAccessibilitySettings">Accessibility</button></li>
         <li data-step="notif"><span class="dot"></span><div><b>Notifications</b><small>For bill reminders. Then turn on reminders on the <a href="Budget.html">Budget</a> page, or just ask the agent.</small></div><button class="btn btn--ghost btn--sm" data-open="openNotificationSettings">Notifications</button></li>
       </ol>
     </div>
@@ -209,6 +209,9 @@
 <script src="store.js"></script>
 <script src="sync.js"></script>
 <script src="reminders.js"></script>
+<script src="focus.js"></script>
+<script src="rojo-face.js"></script>
+<script src="rojo-nav.js"></script>
 <script src="ui.js"></script>
 <script src="ai.js"></script>
 <script src="settings.js"></script>

@@ -67,11 +67,18 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
-    <!-- Lets the agent name the app it's reading (e.g. "Chrome"). -->
+    <!-- Rojo's off-task nudge buzz, and hold-to-talk (RECORD_AUDIO comes from the speech plugin). -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Lets Rojo name the app it's reading (e.g. "Chrome") and spot distracting
+         apps during focus; and find the phone's speech recognizer. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
         </intent>
     </queries>
 </manifest>

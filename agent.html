@@ -4,35 +4,38 @@
 <meta charset="UTF-8" />
 <script>/* BASE: show load/script errors on screen (with a cache-reset fix) */(function(){var shown={};function box(){var d=document.getElementById("baseErr");if(d)return d;d=document.createElement("div");d.id="baseErr";d.setAttribute("role","alert");d.style.cssText="position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:99999;background:#B11410;color:#fff;font:13px/1.45 -apple-system,system-ui,sans-serif;padding:12px 14px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.35)";d.innerHTML='<b>Something didn’t load.</b> <span id="baseErrMsg" style="display:block;opacity:.9;margin:4px 0 10px;white-space:pre-wrap;word-break:break-word"></span><button id="baseErrFix" style="font:inherit;font-weight:600;background:#fff;color:#B11410;border:0;border-radius:99px;padding:7px 14px;margin-right:8px">Fix &amp; reload</button><button id="baseErrX" style="font:inherit;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6);border-radius:99px;padding:6px 12px">Dismiss</button>';(document.body||document.documentElement).appendChild(d);document.getElementById("baseErrX").onclick=function(){d.remove()};document.getElementById("baseErrFix").onclick=function(){var p=[];try{if(navigator.serviceWorker)p.push(navigator.serviceWorker.getRegistrations().then(function(r){return Promise.all(r.map(function(x){return x.unregister()}))}));if(window.caches)p.push(caches.keys().then(function(k){return Promise.all(k.filter(function(n){return n!=="base-reminders"}).map(function(n){return caches.delete(n)}))}))}catch(e){}Promise.all(p).then(function(){location.reload()},function(){location.reload()})};return d}function report(t){if(shown[t])return;shown[t]=1;var go=function(){var m=box().querySelector("#baseErrMsg");m.textContent+=(m.textContent?"\n":"")+t};if(document.body)go();else document.addEventListener("DOMContentLoaded",go)}window.addEventListener("error",function(e){var el=e.target;if(el&&el!==window&&(el.src||el.href)){var u=(el.src||el.href).split("/").pop();if(/\.(js|css)(\?|$)/.test(u))report("Couldn’t load "+u);return}report((e.message||"Error")+" — "+String(e.filename||"").split("/").pop()+":"+(e.lineno||"?"))},true)})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
-<title>BASE Agent</title>
+<title>Rojo</title>
 <script>try{if(localStorage.getItem('base_theme')==='dark')document.documentElement.classList.add('mode-dark');}catch(e){}window.BASE_NO_AUTORELOAD=true;</script>
 <link rel="stylesheet" href="app.css" />
 <link rel="stylesheet" href="agent.css" />
 </head>
 <body class="agent-body">
 <div class="ag-scrim" id="agScrim"></div>
-<section class="ag-sheet" id="agSheet" role="dialog" aria-label="BASE agent">
+<section class="ag-sheet" id="agSheet" role="dialog" aria-label="Rojo">
   <header class="ag-head">
-    <div class="ag-blob" aria-hidden="true"><i></i><i></i><b></b></div>
+    <div class="ag-face" id="agFace" aria-hidden="true"></div>
     <div class="ag-title">
-      <strong>BASE</strong>
-      <button class="ag-ctx hidden" id="agCtx" type="button" title="Tap to stop sharing your screen with BASE"></button>
+      <strong>Rojo</strong>
+      <button class="ag-ctx hidden" id="agCtx" type="button" title="Tap to stop sharing your screen with Rojo"></button>
     </div>
     <button class="ag-icon" id="agNew" type="button" title="New chat" aria-label="New chat">&#8635;</button>
-    <button class="ag-icon" id="agOpen" type="button" title="Open BASE" aria-label="Open BASE">&#8599;</button>
+    <button class="ag-icon" id="agOpen" type="button" title="Open Rojo in BASE" aria-label="Open Rojo in BASE">&#8599;</button>
     <button class="ag-icon" id="agClose" type="button" title="Close" aria-label="Close">&#10005;</button>
   </header>
   <div class="ag-log" id="agLog" aria-live="polite"></div>
   <div class="ag-chips" id="agChips"></div>
   <form class="ag-input" id="agForm" autocomplete="off">
-    <textarea id="agText" rows="1" placeholder="Ask anything…" enterkeyhint="send"></textarea>
+    <textarea id="agText" rows="1" placeholder="Ask Rojo…" enterkeyhint="send"></textarea>
     <button class="ag-send" id="agSend" type="submit" aria-label="Send">&#8593;</button>
   </form>
 </section>
 <script src="store.js"></script>
 <script src="sync.js"></script>
 <script src="reminders.js"></script>
+<script src="focus.js"></script>
 <script src="vendor/anthropic.js"></script>
+<script src="rojo-face.js"></script>
+<script src="agent-core.js"></script>
 <script src="agent.js"></script>
 </body>
 </html>

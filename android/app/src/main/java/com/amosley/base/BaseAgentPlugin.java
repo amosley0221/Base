@@ -128,6 +128,25 @@ public class BaseAgentPlugin extends Plugin {
         }
     }
 
+    /** From focus.js: a session started / paused / ended. */
+    @PluginMethod
+    public void setFocus(PluginCall call) {
+        JSObject d = call.getData();
+        BaseAgentService.setFocus(getContext(), d.optBoolean("active", false), d.optString("task", ""),
+            d.optLong("endsAt", 0), d.optLong("startedAt", 0));
+        call.resolve();
+    }
+
+    /** How many times Rojo nudged you this session, and which apps. */
+    @PluginMethod
+    public void getFocusStats(PluginCall call) {
+        SharedPreferences p = prefs();
+        JSObject r = new JSObject();
+        r.put("nudges", p.getInt("focusNudges", 0));
+        r.put("apps", p.getString("focusApps", ""));
+        call.resolve(r);
+    }
+
     @PluginMethod
     public void closeAgent(PluginCall call) {
         Activity a = getActivity();
@@ -141,6 +160,8 @@ public class BaseAgentPlugin extends Plugin {
         Activity a = getActivity();
         Intent i = new Intent(getContext(), MainActivity.class);
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        String path = call.getString("path");
+        if (path != null && path.matches("[A-Za-z0-9_-]+\\.html")) i.putExtra("path", path);
         a.startActivity(i);
         if (a instanceof AgentActivity) a.runOnUiThread(((AgentActivity) a)::close);
         call.resolve();
