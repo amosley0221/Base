@@ -8,6 +8,8 @@ const path = require("path");
 const fs = require("fs");
 const os = require("os");
 const { Input } = require("./control/input");
+const { Link } = require("./control/link");
+const crypto = require("crypto");
 
 if (!app.requestSingleInstanceLock()) { app.quit(); }
 
@@ -19,6 +21,7 @@ function saveConfig() { try { fs.writeFileSync(CONFIG(), JSON.stringify(config, 
 
 let mini = null, chat = null, overlay = null, pill = null, setup = null, tray = null;
 let input = null;
+let link = null, linkInfo = null, phoneLinked = false, phoneConnected = false;
 let run = { active: false, stopped: false, pending: null };
 let shot = null;   // geometry of the last screenshot: { k, sf, w, h }
 
@@ -88,8 +91,10 @@ function createTray() {
   tray = new Tray(img);
   tray.setToolTip("Rojo");
   const menu = () => Menu.buildFromTemplate([
-    { label: "Talk to Rojo", click: () => toggleChat(true) },
-    { label: mini && mini.isVisible() ? "Hide Rojo" : "Show Rojo", click: () => { if (mini.isVisible()) mini.hide(); else mini.showInactive(); tray.setContextMenu(menu()); } },
+    { label: phoneLinked ? (phoneConnected ? "Linked to your phone ✓" : "Linked to your phone (not connected)") : "Not linked to a phone", enabled: false },
+    { label: "Talk to Rojo here", click: () => toggleChat(true) },
+    { label: "Show Rojo on this computer", type: "checkbox", checked: !!(mini && mini.isVisible()),
+      click: (it) => { config.showHere = it.checked; saveConfig(); applyVisibility(); } },
     { label: "Settings…", click: createSetup },
     { type: "separator" },
     { label: "Start with my computer", type: "checkbox", checked: app.getLoginItemSettings().openAtLogin,
@@ -99,16 +104,36 @@ function createTray() {
   ]);
   tray.setContextMenu(menu());
   tray.on("click", () => toggleChat());
+  refreshTray = () => tray.setContextMenu(menu());
+}
+let refreshTray = () => {};
+
+// With a phone linked, Rojo lives on the phone: hide him here unless you ask to see him.
+function applyVisibility() {
+  if (!mini) return;
+  const show = !phoneLinked || !!config.showHere;
+  if (show && !mini.isVisible()) mini.showInactive();
+  if (!show && mini.isVisible()) { mini.hide(); if (chat && chat.isVisible() && !run.active) chat.hide(); }
+  refreshTray();
 }
 
 // ---------------------------------------------------------------- eyes follow the mouse
+let lastSent = "";
 function followCursor() {
   setInterval(() => {
-    if (!mini || mini.isDestroyed() || !mini.isVisible()) return;
     const p = screen.getCursorScreenPoint();
-    const b = mini.getBounds();
-    mini.webContents.send("cursor", { x: p.x - b.x, y: p.y - b.y });
-  }, 50);
+    if (mini && !mini.isDestroyed() && mini.isVisible()) {
+      const b = mini.getBounds();
+      mini.webContents.send("cursor", { x: p.x - b.x, y: p.y - b.y });
+    }
+    // Rojo on the phone watches your mouse too (sent ~15 times a second while it moves).
+    if (link && phoneConnected) {
+      const d = screen.getDisplayNearestPoint(p).bounds;
+      const x = Math.round(((p.x - d.x) / d.width) * 1000) / 1000, y = Math.round(((p.y - d.y) / d.height) * 1000) / 1000;
+      const key = x + "," + y;
+      if (key !== lastSent) { lastSent = key; link.broadcast({ type: "cursor", x, y }); }
+    }
+  }, 66);
 }
 
 // ---------------------------------------------------------------- screen + input
@@ -234,26 +259,29 @@ async function computer(name, inp) {
 function pillText(t, asking) { if (pill) pill.webContents.send("pill", { text: t, asking: !!asking }); }
 function mood(m) { if (mini) mini.webContents.send("mood", m); }
 
-ipcMain.handle("run-start", (e, goal) => {
-  run = { active: true, stopped: false, pending: null };
+function startRun(goal, fromPhone) {
+  run = { active: true, stopped: false, pending: null, fromPhone: !!fromPhone };
   if (!overlay) createOverlay();
   toggleChat(false);
   overlay.showInactive();
   pill.showInactive();
-  pillText("Rojo is on it: " + String(goal || "").slice(0, 90));
+  pillText((fromPhone ? "Rojo (from your phone): " : "Rojo is on it: ") + String(goal || "").slice(0, 90));
   mood("focused");
   return { ok: true };
-});
-ipcMain.handle("run-end", (e, msg) => {
+}
+function endRun() {
+  const fromPhone = run.fromPhone;
   run.active = false;
   if (run.pending) { run.pending(false); run.pending = null; }
   if (overlay) overlay.hide();
   if (pill) pill.hide();
   mood("happy");
   setTimeout(() => mood("idle"), 2000);
-  toggleChat(true);
+  if (!fromPhone && mini && mini.isVisible()) toggleChat(true);
   return { ok: true };
-});
+}
+ipcMain.handle("run-start", (e, goal) => startRun(goal, false));
+ipcMain.handle("run-end", () => endRun());
 ipcMain.handle("run-stopped", () => run.stopped);
 ipcMain.handle("ask", (e, question) => new Promise((resolve) => {
   if (!pill) return resolve(false);
@@ -271,7 +299,47 @@ ipcMain.handle("computer", async (e, name, inp) => {
   catch (err) { return { ok: false, error: String(err && err.message || err) }; }
 });
 
+// ---------------------------------------------------------------- the phone link
+async function phoneCommand(op, a) {
+  switch (op) {
+    case "computer":
+      if (!run.active) startRun("working on your computer", true);
+      return computer(a.name, a.input);
+    case "runStart": return startRun(a.goal, true);
+    case "runEnd": return endRun();
+    case "stopped": return { ok: true, stopped: !!run.stopped };
+    case "pill": if (run.active) pillText(String(a.text || "").slice(0, 120), false); return { ok: true };
+    // Allow / Don't on this screen too; the phone asks at the same time and whichever answers first wins.
+    case "ask": {
+      if (!run.active) startRun(String(a.text || "").slice(0, 90), true);
+      if (run.pending) { run.pending(false); run.pending = null; }
+      return new Promise((resolve) => {
+        const done = (ok) => resolve({ ok: true, allowed: !!ok });
+        run.pending = done;
+        pillText(String(a.text || "Rojo wants to do something important. OK?").slice(0, 160), true);
+        setTimeout(() => { if (run.pending === done) { run.pending = null; resolve({ ok: true, allowed: false, timeout: true }); } }, 90000);
+      });
+    }
+    case "askDone": if (run.pending) { const p = run.pending; run.pending = null; p(false); } pillText(a.allowed ? "Rojo is on it…" : "OK, Rojo won't do that."); return { ok: true };
+    case "ping": return { ok: true };
+  }
+  return { ok: false, error: "Unknown command " + op };
+}
+async function startLink() {
+  if (!config.linkSecret) { config.linkSecret = crypto.randomBytes(32).toString("hex"); saveConfig(); }
+  link = new Link({ secret: config.linkSecret, port: 47811, name: os.hostname(), onCommand: phoneCommand,
+    onClients: (n) => {
+      phoneConnected = n > 0; refreshTray();
+      if (!phoneConnected && run.active && run.fromPhone) endRun();   // the phone went away mid-task
+    } });
+  try {
+    await link.start();
+    linkInfo = { urls: link.urls(), key: config.linkSecret };
+  } catch (e) { link = null; linkInfo = null; }
+}
+
 // ---------------------------------------------------------------- misc IPC
+ipcMain.on("set-linked", (e, on) => { phoneLinked = !!on; applyVisibility(); });
 ipcMain.on("mini-click", () => toggleChat());
 ipcMain.on("mini-drag", (e, dx, dy) => {
   if (!mini) return;
@@ -287,6 +355,7 @@ ipcMain.handle("info", () => ({
   name: os.hostname(), version: app.getVersion(),
   screenAccess: process.platform === "darwin" ? systemPreferences.getMediaAccessStatus("screen") : "granted",
   openAtLogin: app.getLoginItemSettings().openAtLogin,
+  lan: link ? { urls: link.urls(), key: config.linkSecret, port: link.port } : null,
 }));
 ipcMain.handle("set-login", (e, on) => { app.setLoginItemSettings({ openAtLogin: !!on }); return app.getLoginItemSettings().openAtLogin; });
 ipcMain.handle("test-input", async () => {
@@ -307,8 +376,9 @@ app.whenReady().then(() => {
   createOverlay();
   createTray();
   followCursor();
+  startLink();
   if (!config.setupDone) { createSetup(); config.setupDone = true; saveConfig(); }
 });
 app.on("second-instance", () => toggleChat(true));
-app.on("before-quit", () => { app.quitting = true; if (input) input.stop(); });
+app.on("before-quit", () => { app.quitting = true; if (input) input.stop(); if (link) link.stop(); });
 app.on("window-all-closed", (e) => { /* keep running in the tray */ });

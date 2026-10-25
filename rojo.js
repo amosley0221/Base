@@ -254,7 +254,66 @@
     },
     screen() {},
     practice(on) { paintPractice(); },
+    // Allow / Don't for something Rojo is about to do on your computer.
+    ask(question, signal) {
+      return new Promise((resolve) => {
+        if (typing) typing.finish();
+        face.setMood("curious"); Chirp.play("surprise");
+        showBubble(C.esc(question) + '<div class="rj-ask"><button class="rj-mini primary" type="button" data-ok="1">Allow</button><button class="rj-mini" type="button" data-ok="0">Don\'t</button></div>');
+        const box = textEl.querySelector(".rj-ask");
+        const done = (ok) => {
+          signal && signal.removeEventListener("abort", aborted);
+          if (box.isConnected) box.remove();
+          face.setMood("thinking");
+          showBubble('<span class="typing"><i></i><i></i><i></i></span>');
+          resolve(ok);
+        };
+        const aborted = () => done(false);   // answered on the computer instead
+        box.addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) done(b.dataset.ok === "1"); });
+        signal && signal.addEventListener("abort", aborted);
+      });
+    },
+    // What Rojo is doing on the linked computer right now.
+    working(name, inp) {
+      const what = { screenshot: "Looking at your screen", zoom: "Taking a closer look", type: "Typing", key: "Pressing keys", scroll: "Scrolling", wait: "Waiting a sec" }[name] ||
+        (/click|mouse|drag/.test(name) ? "Clicking" : "Working");
+      showBubble('<span class="typing"><i></i><i></i><i></i></span><span class="rj-work">' + C.esc(what) + " on " + C.esc(PL ? PL.name : "your computer") + "…</span>");
+    },
   }, { surface: "rojo" });
+
+  // ---------------------------------------------------------------- your computer (Rojo Desktop on the same Wi-Fi)
+  // When linked, Rojo lives here and the computer is his hands: his eyes follow your mouse over there.
+  const PL = window.PcLink;
+  const pcBtn = $("#rjPc");
+  let touchUntil = 0, cursorIdle = 0;
+  function paintPc() {
+    if (!PL) return;
+    pcBtn.hidden = !PL.paired;
+    pcBtn.classList.toggle("on", PL.connected);
+    pcBtn.title = PL.connected ? PL.name + " is connected" : PL.name + " isn't connected";
+  }
+  if (PL) {
+    PL.onStatus((on) => {
+      paintPc();
+      if (on) { face.hop(); Chirp.play("hi"); }
+    });
+    PL.onCursor((nx, ny) => {
+      if (Date.now() < touchUntil || listening) return;
+      lastActive = Date.now();
+      if (face.mood === "asleep" || face.mood === "sleepy") face.setMood(idleMood());
+      // The phone usually sits below the monitor, so he looks up at it.
+      face.lookAt((nx - 0.5) * 2.2, -0.75 + ny * 0.9);
+      clearTimeout(cursorIdle);
+      cursorIdle = setTimeout(() => face.lookAt(null), 4000);
+    });
+    pcBtn.addEventListener("click", () => {
+      if (PL.connected) typeOut(`I'm linked to **${PL.name}**. Ask me to do something on it and I'll use it from here. 🖥️`, "happy");
+      else { typeOut(`I can't reach **${PL.name}** right now. Open Rojo Desktop there and make sure this phone is on the same Wi-Fi.`, "idle"); PL.connect(); }
+    });
+    paintPc();
+    PL.connect();
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { paintPc(); PL.connect(); } else PL.disconnect(); });
+  }
 
   // ---------------------------------------------------------------- Spanish practice
   const esBtn = $("#rjSpanish");
@@ -319,9 +378,10 @@
   }
   let lookTimer = 0;
   document.addEventListener("pointermove", (e) => {
-    if (e.pointerType === "mouse" || e.buttons) { face.lookAtPoint(e.clientX, e.clientY); clearTimeout(lookTimer); lookTimer = setTimeout(() => face.lookAt(null), e.pointerType === "mouse" ? 2500 : 700); }
+    if (e.pointerType === "mouse" || e.buttons) { touchUntil = Date.now() + 1500; face.lookAtPoint(e.clientX, e.clientY); clearTimeout(lookTimer); lookTimer = setTimeout(() => face.lookAt(null), e.pointerType === "mouse" ? 2500 : 700); }
   }, { passive: true });
   document.addEventListener("pointerdown", (e) => {
+    touchUntil = Date.now() + 1500;
     touched();
     face.lookAtPoint(e.clientX, e.clientY);
     clearTimeout(lookTimer); lookTimer = setTimeout(() => face.lookAt(null), 900);

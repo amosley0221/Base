@@ -89,12 +89,19 @@
     st.rojo = st.rojo || {};
     if (!Array.isArray(st.rojo.devices)) st.rojo.devices = [];
     const d = st.rojo.devices.find((x) => x.id === info.kind);
-    if (d && Date.now() - (d.lastSeen || 0) < 9 * 60000 && d.name === info.name) return;
-    if (d) Object.assign(d, { name: info.name, lastSeen: Date.now() });
-    else st.rojo.devices.push({ id: info.kind, name: info.name, lastSeen: Date.now() });
+    const fresh = await D.info();
+    const lan = fresh.lan || {};
+    const lanUrls = lan.urls || [];
+    const same = d && d.name === info.name && d.lanKey === lan.key && JSON.stringify(d.lanUrls || []) === JSON.stringify(lanUrls);
+    if (same && Date.now() - (d.lastSeen || 0) < 9 * 60000) return;
+    const rec = { name: info.name, lastSeen: Date.now(), lanUrls, lanKey: lan.key || "" };
+    if (d) Object.assign(d, rec);
+    else st.rojo.devices.push(Object.assign({ id: info.kind }, rec));
     S.save(st);
   }
   async function checkTasks() {
+    // Linked to a phone (shared sync): Rojo lives on the phone, this computer does the work.
+    D.setLinked(!!(window.BaseSync && BaseSync.status().enabled));
     if (!window.BaseSync || !BaseSync.status().enabled) return;
     try { await BaseSync.syncNow(); } catch (e) {}
     await heartbeat();

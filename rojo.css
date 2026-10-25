@@ -45,6 +45,12 @@ body.rojo-body {
 .rj-icon:active { transform: scale(0.94); }
 .rj-es { font-size: 12.5px; letter-spacing: .04em; }
 .rj-es.on { background: var(--rj-red); border-color: var(--rj-red); color: #fff; }
+.rj-pc { position: relative; color: var(--rj-soft); }
+.rj-pc i { position: absolute; right: 5px; top: 5px; width: 9px; height: 9px; border-radius: 50%; background: #B9B2A8; border: 2px solid var(--rj-bg, #F4F0EA); }
+.rj-pc.on { color: var(--rj-ink); }
+.rj-pc.on i { background: #2FA35A; }
+.rj-ask { display: flex; gap: 8px; margin-top: 10px; }
+.rj-work { display: block; margin-top: 6px; font-size: 13px; color: var(--rj-soft); }
 #rjSound .off { display: none; }
 #rjSound.muted .on { display: none; }
 #rjSound.muted .off { display: block; }
