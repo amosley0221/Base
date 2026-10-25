@@ -40,7 +40,7 @@ window.BaseFocus = (function () {
     syncNative(st);
   }
   function syncNative(st) {
-    if (AG && AG.setFocus) AG.setFocus({ active: !!(st.active && !st.paused && !st.done), task: st.task || "", endsAt: st.endsAt || 0 }).catch(() => {});
+    if (AG && AG.setFocus) AG.setFocus({ active: !!(st.active && !st.paused && !st.done), task: st.task || "", endsAt: st.endsAt || 0, startedAt: st.startedAt || 0 }).catch(() => {});
     if (!LN) return;
     LN.cancel({ notifications: [{ id: DONE_NOTIF }] }).catch(() => {}).then(() => {
       if (st.active && !st.paused && st.endsAt && st.endsAt > Date.now() + 1000) {

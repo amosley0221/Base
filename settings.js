@@ -253,7 +253,7 @@
     }
     $("#agBubble").addEventListener("change", async (e) => {
       try { await AGT.setBubble({ enabled: e.target.checked }); } catch (err) {}
-      toast(e.target.checked ? "Agent on" : "Agent hidden");
+      toast(e.target.checked ? "Rojo is on" : "Rojo is hidden");
       refreshAgent();
     });
     document.querySelectorAll("#agSteps [data-open]").forEach((b) => b.addEventListener("click", () => {

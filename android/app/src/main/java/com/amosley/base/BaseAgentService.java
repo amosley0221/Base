@@ -8,7 +8,15 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.media.AudioAttributes;
+import android.media.AudioFormat;
+import android.media.AudioTrack;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.provider.Settings;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.drawable.GradientDrawable;
@@ -32,7 +40,10 @@ import android.view.animation.DecelerateInterpolator;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.json.JSONObject;
 
 /**
@@ -41,6 +52,10 @@ import org.json.JSONObject;
  *  - read the text of the app/site on screen when the mascot is tapped.
  * Screen text is only read on a tap (or when the agent asks to re-read),
  * never in the background.
+ *
+ * During a Rojo focus session it also watches which app is in front (just the
+ * app's package name, from window-change events) and nudges you if you stay
+ * in a distracting app (social, video, games) for a little while.
  */
 public class BaseAgentService extends AccessibilityService {
 
@@ -69,6 +84,28 @@ public class BaseAgentService extends AccessibilityService {
     private BroadcastReceiver screenReceiver;
     private final Runnable collapsePill = () -> showPill(false);
 
+    // ---- focus sessions / off-task nudges
+    static final long GRACE_MS = 20000;       // how long in a distracting app before a nudge
+    static final long COOLDOWN_MS = 120000;   // between nudges
+    private static final Set<String> DISTRACTING = new HashSet<>(Arrays.asList(
+        "com.instagram.android", "com.instagram.barcelona", "com.zhiliaoapp.musically", "com.ss.android.ugc.trill",
+        "com.twitter.android", "com.facebook.katana", "com.facebook.lite", "com.snapchat.android",
+        "com.google.android.youtube", "com.reddit.frontpage", "com.netflix.mediaclient", "tv.twitch.android.app",
+        "com.pinterest", "com.tumblr", "com.bereal.ft", "com.hulu.plus", "com.disney.disneyplus",
+        "com.amazon.avod.thirdpartyclient", "com.discord", "com.google.android.apps.youtube.music.pwa"));
+    private String fgPkg = "";
+    private long lastNudgeAt = 0;
+    private String focusPill = null;
+    private boolean forcedShow = false;
+    private final Runnable offTaskCheck = this::checkOffTask;
+    private final Runnable endFocusPill = () -> {
+        focusPill = null;
+        forcedShow = false;
+        showPill(false);
+        if (mascot != null) mascot.setMood(focusRunning() ? "focused" : "idle");
+        applyState();
+    };
+
     static SharedPreferences prefs(Context c) {
         return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
@@ -86,6 +123,19 @@ public class BaseAgentService extends AccessibilityService {
             s.applyState();
             s.popNudge();
         });
+    }
+
+    /** From the JS focus timer: whether a session is running, its task and end time. */
+    static void setFocus(Context c, boolean active, String task, long endsAt, long startedAt) {
+        SharedPreferences p = prefs(c);
+        SharedPreferences.Editor e = p.edit()
+            .putBoolean("focusActive", active).putString("focusTask", task == null ? "" : task).putLong("focusEndsAt", endsAt);
+        if (startedAt != 0 && startedAt != p.getLong("focusStartedAt", 0)) {
+            e.putLong("focusStartedAt", startedAt).putInt("focusNudges", 0).putString("focusApps", "");
+        }
+        e.apply();
+        BaseAgentService s = instance;
+        if (s != null) s.main.post(s::onFocusChanged);
     }
 
     static void setAgentOpen(boolean open) {
@@ -141,7 +191,136 @@ public class BaseAgentService extends AccessibilityService {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-        // Nothing to do per event: the screen is only read on demand.
+        // Only used to know which app is in front during a focus session.
+        if (event == null || event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
+        CharSequence pc = event.getPackageName();
+        if (pc == null) return;
+        String pkg = pc.toString();
+        if (pkg.equals(fgPkg) || isTransient(pkg)) return;
+        fgPkg = pkg;
+        main.removeCallbacks(offTaskCheck);
+        if (focusRunning() && isDistracting(pkg)) main.postDelayed(offTaskCheck, GRACE_MS);
+    }
+
+    // ------------------------------------------------------------ focus
+    private boolean focusRunning() {
+        SharedPreferences p = prefs(this);
+        return p.getBoolean("focusActive", false) && p.getLong("focusEndsAt", 0) > System.currentTimeMillis();
+    }
+
+    /** System UI and keyboards pop up over apps; they don't change which app you're in. */
+    private boolean isTransient(String pkg) {
+        if (pkg.equals("com.android.systemui") || pkg.contains("inputmethod") || pkg.contains("keyboard")) return true;
+        String ime = Settings.Secure.getString(getContentResolver(), Settings.Secure.DEFAULT_INPUT_METHOD);
+        return ime != null && ime.startsWith(pkg + "/");
+    }
+
+    private boolean isDistracting(String pkg) {
+        if (pkg == null || pkg.isEmpty() || pkg.equals(getPackageName())) return false;
+        if (DISTRACTING.contains(pkg)) return true;
+        if (Build.VERSION.SDK_INT >= 26) {
+            try {
+                ApplicationInfo ai = getPackageManager().getApplicationInfo(pkg, 0);
+                return ai.category == ApplicationInfo.CATEGORY_GAME
+                    || ai.category == ApplicationInfo.CATEGORY_SOCIAL
+                    || ai.category == ApplicationInfo.CATEGORY_VIDEO;
+            } catch (Exception ignored) {}
+        }
+        return false;
+    }
+
+    private void onFocusChanged() {
+        boolean running = focusRunning();
+        if (mascot != null && focusPill == null) mascot.setMood(running ? "focused" : "idle");
+        main.removeCallbacks(offTaskCheck);
+        if (running && isDistracting(fgPkg)) main.postDelayed(offTaskCheck, GRACE_MS);
+        if (!running && focusPill != null) endFocusPill.run();
+    }
+
+    private void checkOffTask() {
+        if (!focusRunning() || !isDistracting(fgPkg)) return;
+        long now = System.currentTimeMillis();
+        long wait = COOLDOWN_MS - (now - lastNudgeAt);
+        if (wait > 0) { main.postDelayed(offTaskCheck, wait); return; }
+        nudge(fgPkg);
+        main.postDelayed(offTaskCheck, COOLDOWN_MS);   // again later if you're still there
+    }
+
+    private void nudge(String pkg) {
+        lastNudgeAt = System.currentTimeMillis();
+        SharedPreferences p = prefs(this);
+        String task = p.getString("focusTask", "");
+        long left = Math.max(1, (p.getLong("focusEndsAt", 0) - lastNudgeAt + 59999) / 60000);
+        String app = appLabel(pkg, null);
+        String apps = p.getString("focusApps", "");
+        if (!(", " + apps + ",").contains(", " + app + ",")) apps = apps.isEmpty() ? app : apps + ", " + app;
+        p.edit().putInt("focusNudges", p.getInt("focusNudges", 0) + 1).putString("focusApps", apps).apply();
+
+        String[] lines = {
+            "Psst! Weren't you working on " + task + "? " + left + " min left.",
+            "Hey, " + app + " can wait. Back to " + task + "?",
+            left + " min to go on " + task + ". You've got this!",
+        };
+        focusPill = lines[(int) (Math.random() * lines.length)];
+        forcedShow = true;
+        applyState();
+        if (mascot != null) {
+            mascot.setMood("surprised");
+            main.postDelayed(() -> { if (focusPill != null && mascot != null) mascot.setMood("focused"); }, 2500);
+        }
+        showPill(true);
+        main.removeCallbacks(endFocusPill);
+        main.postDelayed(endFocusPill, 10000);
+        buzz();
+        chirp();
+    }
+
+    private void buzz() {
+        try {
+            Vibrator v = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+            if (v == null || !v.hasVibrator()) return;
+            if (Build.VERSION.SDK_INT >= 26) v.vibrate(VibrationEffect.createWaveform(new long[] { 0, 35, 90, 35 }, -1));
+        } catch (Exception ignored) {}
+    }
+
+    /** Rojo's little "uh-oh" chirp, on the notification channel (silent mode silences it). */
+    private void chirp() {
+        new Thread(() -> {
+            try {
+                int rate = 22050;
+                double[][] blips = { { 720, 500, 0.12 }, { 600, 420, 0.16 } };
+                int total = 0;
+                for (double[] b : blips) total += (int) (rate * (b[2] + 0.03));
+                short[] pcm = new short[total];
+                int at = 0;
+                for (double[] b : blips) {
+                    int n = (int) (rate * b[2]);
+                    double phase = 0;
+                    for (int i = 0; i < n; i++) {
+                        double t = (double) i / n;
+                        double f = b[0] * Math.pow(b[1] / b[0], t);
+                        phase += 2 * Math.PI * f / rate;
+                        double env = Math.min(1, t * 40) * Math.pow(1 - t, 1.5);
+                        pcm[at + i] = (short) (Math.sin(phase) * env * 9000);
+                    }
+                    at += (int) (rate * (b[2] + 0.03));
+                }
+                AudioTrack track = new AudioTrack.Builder()
+                    .setAudioAttributes(new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+                    .setAudioFormat(new AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(rate)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
+                    .setBufferSizeInBytes(pcm.length * 2)
+                    .setTransferMode(AudioTrack.MODE_STATIC)
+                    .build();
+                track.write(pcm, 0, pcm.length);
+                track.play();
+                Thread.sleep(600);
+                track.release();
+            } catch (Exception ignored) {}
+        }).start();
     }
 
     @Override
@@ -161,6 +340,8 @@ public class BaseAgentService extends AccessibilityService {
 
     private void cleanup() {
         main.removeCallbacksAndMessages(null);
+        focusPill = null;
+        forcedShow = false;
         detach();
         if (screenReceiver != null) {
             try {
@@ -184,7 +365,8 @@ public class BaseAgentService extends AccessibilityService {
         root.setClipToPadding(false);
 
         mascot = new AgentMascotView(this);
-        mascot.setContentDescription("BASE agent. Tap to ask anything.");
+        mascot.setContentDescription("Rojo. Tap to ask anything.");
+        mascot.setMood(focusRunning() ? "focused" : "idle");
 
         pill = new LinearLayout(this);
         pill.setOrientation(LinearLayout.HORIZONTAL);
@@ -214,6 +396,7 @@ public class BaseAgentService extends AccessibilityService {
         pillClose.setAlpha(0.55f);
         pillClose.setContentDescription("Dismiss");
         pillClose.setOnClickListener(v -> {
+            if (focusPill != null) { main.removeCallbacks(endFocusPill); endFocusPill.run(); return; }
             dismissedNudge = prefs(this).getString("nudge", "");
             showPill(false);
         });
@@ -242,7 +425,7 @@ public class BaseAgentService extends AccessibilityService {
                 mascot.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
                 hiddenUntilUnlock = true;
                 applyState();
-                Toast.makeText(BaseAgentService.this, "BASE agent hidden until you unlock again", Toast.LENGTH_SHORT).show();
+                Toast.makeText(BaseAgentService.this, "Rojo is hiding until you unlock again", Toast.LENGTH_SHORT).show();
             };
 
             @Override
@@ -366,8 +549,7 @@ public class BaseAgentService extends AccessibilityService {
         if (root == null) return;
         SharedPreferences p = prefs(this);
         boolean dark = p.getBoolean("dark", false);
-        int accent = dark ? 0xFF6E9A3A : 0xFFE8281E;
-        mascot.setColor(accent);
+        int accent = AgentMascotView.ROJO_RED;
 
         GradientDrawable bg = new GradientDrawable();
         bg.setCornerRadius(dp(22));
@@ -377,14 +559,15 @@ public class BaseAgentService extends AccessibilityService {
         pillText.setTextColor(dark ? 0xFFECEEE0 : 0xFF2B2622);
         pillClose.setTextColor(dark ? 0xFFECEEE0 : 0xFF2B2622);
 
-        String tone = p.getString("nudgeTone", "info");
+        String tone = focusPill != null ? "bad" : p.getString("nudgeTone", "info");
         GradientDrawable dot = new GradientDrawable();
         dot.setShape(GradientDrawable.OVAL);
         dot.setColor("bad".equals(tone) ? 0xFFE8281E : "warn".equals(tone) ? 0xFFE0A030 : accent);
         pillDot.setBackground(dot);
-        pillText.setText(p.getString("nudge", ""));
+        pillText.setText(focusPill != null ? focusPill : p.getString("nudge", ""));
 
-        boolean want = p.getBoolean("bubble", true) && unlocked && !agentOpen && !hiddenUntilUnlock;
+        // Nudges show Rojo even if the floating bubble is turned off.
+        boolean want = (p.getBoolean("bubble", true) || forcedShow) && unlocked && !agentOpen && !hiddenUntilUnlock;
         if (want && !attached) {
             try {
                 wm.addView(root, lp);

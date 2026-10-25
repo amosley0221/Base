@@ -45,13 +45,13 @@
       </div>
       <div id="obStep2" hidden>
         <h2 id="obHi">Let's set you up.</h2>
-        <p>Start wherever you like. You can also just tell the BASE agent, like "rent is $1,200 due on the 1st".</p>
+        <p>Start wherever you like. You can also just tell Rojo, like "rent is $1,200 due on the 1st".</p>
         <ul class="ob-steps">
           <li><a href="Budget.html"><span class="ic">$</span><span><b>Budget &amp; bills</b><small>Accounts, bills, subscriptions, reminders</small></span><span>›</span></a></li>
           <li><a href="Plan.html"><span class="ic">✓</span><span><b>Tasks &amp; habits</b><small>Your focus list and weekly habits</small></span><span>›</span></a></li>
           <li><a href="Calendar.html"><span class="ic">◷</span><span><b>Your week</b><small>Classes, shifts, workouts, dates</small></span><span>›</span></a></li>
           <li><a href="School.html"><span class="ic">✎</span><span><b>School</b><small>Classes, grades, assignments</small></span><span>›</span></a></li>
-          <li><a href="Settings.html#agentPanel"><span class="ic">●</span><span><b>Floating agent</b><small>Your Claude buddy over other apps</small></span><span>›</span></a></li>
+          <li><a href="rojo.html"><span class="ic">●</span><span><b>Meet Rojo</b><small>Your assistant for bills, questions and focus</small></span><span>›</span></a></li>
         </ul>
         <div class="ob-row"><button class="btn btn--red" id="obDone" type="button">Go to Home</button></div>
       </div>
