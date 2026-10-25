@@ -1,3 +1,15 @@
+## Rojo Desktop 1.2: Rojo's own pointer
+
+Your normal mouse pointer stays as it is. When you give Rojo a task, **his own pointer appears**: a little glowing Rojo with a red arrow on the top-left of his head.
+
+- **It shows you every step.** It glides to each spot before he acts, and a label next to him says what he's doing: *"Clicking Post"*, *"Typing your reply to Sam"*, *"Scrolling down"*, *"Pressing Ctrl+S"*.
+- **You can see what he clicked.** A red ring pops where the arrow tip lands, and his eyes look the way he's heading.
+- It starts where your mouse is and goes away when he's done (or when you tap **Stop**).
+
+Installs over 1.1.0; your settings stay.
+
+---
+
 ## Rojo Desktop 1.1: your phone is Rojo, your computer is his hands
 
 When BASE on your phone is linked (same sync token and passphrase), **Rojo lives on your phone** and this computer does the work:

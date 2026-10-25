@@ -1,7 +1,7 @@
 {
   "name": "rojo-desktop",
   "productName": "Rojo",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Rojo, your BASE assistant, on your Windows PC or Mac",
   "main": "main.js",
   "author": "BASE",
