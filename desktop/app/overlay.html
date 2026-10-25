@@ -10,18 +10,21 @@
     animation: pulse 1.4s ease-in-out infinite alternate; }
   @keyframes pulse { to { box-shadow: inset 0 0 0 8px #F2481D, inset 0 0 60px 18px rgba(242, 72, 29, .7); } }
 
-  /* Rojo's cursor: the arrow tip is the exact point he's acting on; his head hangs off its tail. */
+  /* Rojo's cursor: his felt body stretches into a point at his top-left; the tip is the exact spot he's acting on. */
   .rc { position: fixed; left: 0; top: 0; width: 0; height: 0; opacity: 0; will-change: transform;
     transition: transform .45s cubic-bezier(.2, .9, .3, 1), opacity .2s; }
   .rc.on { opacity: 1; }
   .rc.instant { transition: opacity .2s; }
+  /* a white edge all round (like a normal pointer) plus a red glow */
   .rc-in { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform .12s ease-out;
-    filter: drop-shadow(0 0 6px rgba(242, 72, 29, .75)) drop-shadow(0 3px 6px rgba(0, 0, 0, .3)); }
-  .rc.press .rc-in { transform: scale(.82); }
-  .arrow { position: absolute; left: -3px; top: -3px; width: 30px; height: 36px; }
-  .head { position: absolute; left: 8px; top: 12px; width: 60px; height: 60px; animation: bob 2.2s ease-in-out infinite; }
-  @keyframes bob { 50% { transform: translateY(-2px) rotate(-3deg); } }
-  .label { position: absolute; left: 72px; top: 30px; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    filter: drop-shadow(1.6px 0 0 #fff) drop-shadow(-1.6px 0 0 #fff) drop-shadow(0 1.6px 0 #fff) drop-shadow(0 -1.6px 0 #fff)
+            drop-shadow(0 0 7px rgba(242, 72, 29, .8)) drop-shadow(0 3px 6px rgba(0, 0, 0, .3)); }
+  .rc.press .rc-in { transform: scale(.84); }
+  .head { position: absolute; left: 10px; top: 10px; width: 64px; height: 64px; }
+  .spike { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .grow { transform-origin: 200px 208px; transform: scale(0); transition: transform .55s cubic-bezier(.3, 1.5, .5, 1); }
+  .rc.pointer .grow { transform: scale(1); }
+  .label { position: absolute; left: 78px; top: 34px; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     padding: 5px 11px; border-radius: 14px; background: rgba(21, 20, 16, .92); color: #F7F2EA; border: 1.5px solid #F2481D;
     box-shadow: 0 4px 14px rgba(0, 0, 0, .3); opacity: 0; transform: translateX(-4px); transition: opacity .18s, transform .18s; }
   .label.on { opacity: 1; transform: none; }
@@ -44,12 +47,26 @@
 <div class="ring" id="ring"></div>
 <div class="rc" id="rc">
   <div class="rc-in">
-    <svg class="arrow" viewBox="0 0 30 36" aria-hidden="true">
-      <path d="M3 3 L3 29 L10 22.6 L14.6 33 L19.4 30.8 L14.9 20.8 L24.6 20.8 Z" fill="#F2481D" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/>
-    </svg>
-    <div class="head" id="head"></div>
-    <div class="label" id="label"></div>
+    <div class="head" id="head">
+      <!-- the point he grows out of his fuzz (same felt as his body, which sits on top of it) -->
+      <svg class="spike" viewBox="0 0 400 400" aria-hidden="true">
+        <defs>
+          <linearGradient id="sg" gradientUnits="userSpaceOnUse" x1="-62.5" y1="-62.5" x2="200" y2="208">
+            <stop offset="0" stop-color="#EE4419"/><stop offset=".55" stop-color="#FF5A2A"/><stop offset="1" stop-color="#F2481D"/></linearGradient>
+          <filter id="felt" x="-10%" y="-10%" width="120%" height="120%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="4" result="n"/>
+            <feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G" result="d"/>
+            <feTurbulence type="fractalNoise" baseFrequency="1.15" numOctaves="2" seed="9" result="n2"/>
+            <feColorMatrix in="n2" type="matrix" values="0 0 0 0 1  0 0 0 0 .72  0 0 0 0 .6  .3 0 0 0 -.13" result="w"/>
+            <feComposite in="w" in2="d" operator="in" result="wt"/>
+            <feMerge><feMergeNode in="d"/><feMergeNode in="wt"/></feMerge>
+          </filter>
+        </defs>
+        <g class="grow"><path filter="url(#felt)" fill="url(#sg)" d="M 307.7 79.0 C 234.8 18.2 2.9 -37.5 -62.5 -62.5 C -39.5 3.6 9.2 237.0 67.9 311.8 L 200 208 Z"/></g>
+      </svg>
+    </div>
   </div>
+  <div class="label" id="label"></div>
 </div>
 <script src="base/rojo-face.js"></script>
 <script>
@@ -57,8 +74,19 @@
   const rc = document.getElementById("rc"), label = document.getElementById("label");
   const ring = document.getElementById("ring"), trail = document.getElementById("trail");
   const face = RojoFace.create(document.getElementById("head"));
-  face.setMood("focused");
-  let at = null, labelTimer = 0, moodTimer = 0;
+  face.setMood("idle");
+  let at = null, labelTimer = 0, moodTimer = 0, morph = 0;
+  // At rest he looks up at his point: at what he's about to click.
+  const rest = () => face.lookAt(-0.8, -0.8);
+  rest();
+
+  // He shows up round next to your mouse, then turns into a pointer.
+  function becomePointer() {
+    clearTimeout(morph);
+    rc.classList.remove("pointer");
+    face.setMood("surprised");
+    morph = setTimeout(() => { rc.classList.add("pointer"); face.hop(1); face.setMood("idle"); }, 260);
+  }
 
   function place(x, y, instant) {
     rc.classList.toggle("instant", !!instant);
@@ -71,10 +99,11 @@
         trail.style.width = len + "px";
         trail.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
         trail.classList.remove("go"); void trail.offsetWidth; trail.classList.add("go");
-        setTimeout(() => face.lookAt(null), 500);
+        setTimeout(() => rest(), 500);
       }
     }
     rc.style.transform = `translate(${x}px, ${y}px)`;
+    if (!at) becomePointer();
     rc.classList.add("on");
     at = { x, y };
   }
@@ -88,7 +117,7 @@
   function mood(m, ms) {
     clearTimeout(moodTimer);
     face.setMood(m);
-    if (ms) moodTimer = setTimeout(() => face.setMood("focused"), ms);
+    if (ms) moodTimer = setTimeout(() => face.setMood("idle"), ms);
   }
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -106,10 +135,12 @@
     } else if (a.kind === "type") mood("talking", 0);
     else if (a.kind === "look") mood("curious", 900);
     else if (a.kind === "wait") mood("thinking", 0);
-    else if (a.kind === "done") mood("focused", 0);
+    else if (a.kind === "done") mood("idle", 0);
   });
   D.on("ripple", () => { ring.style.left = (at ? at.x : -99) + "px"; ring.style.top = (at ? at.y : -99) + "px"; ring.classList.remove("go"); void ring.offsetWidth; ring.classList.add("go"); });
-  D.on("cursor-reset", () => { at = null; rc.classList.remove("on"); say(""); face.setMood("focused"); });
+  D.on("cursor-reset", () => { at = null; clearTimeout(morph); rc.classList.remove("on", "pointer"); say(""); face.setMood("idle"); });
+  // Done: the point melts back into his fuzz.
+  D.on("cursor-done", () => { clearTimeout(morph); rc.classList.remove("pointer"); say("Done!"); face.hop(1.2); face.setMood("happy"); });
 </script>
 </body>
 </html>

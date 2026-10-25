@@ -1,3 +1,15 @@
+## Rojo Desktop 1.2.1: Rojo turns into the pointer
+
+When you give Rojo a task he pops up round next to your mouse, then **his fuzz stretches into a point**: Rojo himself is the pointer, with a white edge like a normal cursor and a red glow. The tip is exactly where he's about to click, and he looks up at it.
+
+- He glides to each spot with a label saying what he's doing (*"Clicking Post"*, *"Typing your reply"*), and a red ring pops where he clicks.
+- When he's finished, the point melts back into his round body and he says **Done!**
+- Your normal mouse pointer is untouched the whole time.
+
+Installs over 1.2.0 or 1.1.0; your settings stay.
+
+---
+
 ## Rojo Desktop 1.2: Rojo's own pointer
 
 Your normal mouse pointer stays as it is. When you give Rojo a task, **his own pointer appears**: a little glowing Rojo with a red arrow on the top-left of his head.
