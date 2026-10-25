@@ -19,7 +19,7 @@ contextBridge.exposeInMainWorld("RojoDesktop", {
   testInput: () => ipcRenderer.invoke("test-input"),
   setLinked: (on) => ipcRenderer.send("set-linked", on),
   on: (channel, fn) => {
-    const ok = ["cursor", "mood", "pointer", "act", "cursor-reset", "ripple", "pill", "settings-changed"];
+    const ok = ["cursor", "mood", "pointer", "act", "cursor-reset", "cursor-done", "ripple", "pill", "settings-changed"];
     if (ok.includes(channel)) ipcRenderer.on(channel, (e, ...args) => fn(...args));
   },
 });

@@ -299,7 +299,11 @@ function endRun() {
   const fromPhone = run.fromPhone;
   run.active = false;
   if (run.pending) { run.pending(false); run.pending = null; }
-  if (overlay) overlay.hide();
+  if (overlay) {
+    overlay.webContents.send("cursor-done");
+    const o = overlay;
+    setTimeout(() => { if (!run.active && o && !o.isDestroyed()) o.hide(); }, 750);
+  }
   if (pill) pill.hide();
   mood("happy");
   setTimeout(() => mood("idle"), 2000);
